@@ -33,10 +33,15 @@ export function EbookForm({ ebook }: EbookFormProps) {
     const ebookFile = getFile(formData, "ebookFile");
 
     try {
+      if (coverFile || ebookFile) {
+        await assertBlobUploadReady();
+      }
+
       if (coverFile) {
         setStatus("Uploading cover image...");
-        const coverBlob = await upload(`bookbridge/covers/${slug}-${coverFile.name}`, coverFile, {
+        const coverBlob = await upload(`bookbridge/covers/${slug}-${getSafeFileName(coverFile.name)}`, coverFile, {
           access: "public",
+          contentType: coverFile.type,
           handleUploadUrl: "/api/admin/blob-upload"
         });
 
@@ -50,9 +55,14 @@ export function EbookForm({ ebook }: EbookFormProps) {
         }
 
         setStatus("Uploading PDF to Vercel Blob...");
-        const ebookBlob = await upload(`bookbridge/ebooks/${slug}-${ebookFile.name}`, ebookFile, {
+        const ebookBlob = await upload(`bookbridge/ebooks/${slug}-${getSafeFileName(ebookFile.name)}`, ebookFile, {
           access: "public",
-          handleUploadUrl: "/api/admin/blob-upload"
+          contentType: "application/pdf",
+          handleUploadUrl: "/api/admin/blob-upload",
+          multipart: true,
+          onUploadProgress: ({ percentage }) => {
+            setStatus(`Uploading PDF to Vercel Blob... ${Math.round(percentage)}%`);
+          }
         });
 
         formData.set("fileUrl", ebookBlob.url);
@@ -236,6 +246,28 @@ function getFile(formData: FormData, key: string) {
   }
 
   return null;
+}
+
+async function assertBlobUploadReady() {
+  const response = await fetch("/api/admin/blob-upload", {
+    method: "GET",
+    credentials: "same-origin"
+  });
+
+  if (response.ok) {
+    return;
+  }
+
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+  throw new Error(payload?.error ?? "Vercel Blob upload route is not ready.");
+}
+
+function getSafeFileName(fileName: string) {
+  const dotIndex = fileName.lastIndexOf(".");
+  const baseName = dotIndex > -1 ? fileName.slice(0, dotIndex) : fileName;
+  const extension = dotIndex > -1 ? fileName.slice(dotIndex).toLowerCase() : "";
+
+  return `${slugify(baseName) || "file"}${extension}`;
 }
 
 function Field({
