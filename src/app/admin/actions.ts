@@ -1,7 +1,5 @@
 "use server";
 
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -13,8 +11,6 @@ import {
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/ebook-utils";
 
-const uploadRoot = path.join(process.cwd(), "public", "uploads");
-
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -23,61 +19,6 @@ function getFormString(formData: FormData, key: string) {
 function getFormNumber(formData: FormData, key: string, fallback: number) {
   const value = Number.parseInt(getFormString(formData, key), 10);
   return Number.isFinite(value) && value > 0 ? value : fallback;
-}
-
-function getUploadedFile(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (value instanceof File && value.size > 0) {
-    return value;
-  }
-
-  return null;
-}
-
-function getExtension(file: File, fallback: string) {
-  const originalExtension = path.extname(file.name).toLowerCase();
-
-  if (originalExtension) {
-    return originalExtension;
-  }
-
-  if (file.type === "image/jpeg") {
-    return ".jpg";
-  }
-
-  if (file.type === "image/png") {
-    return ".png";
-  }
-
-  if (file.type === "image/webp") {
-    return ".webp";
-  }
-
-  return fallback;
-}
-
-async function saveUpload(file: File | null, folder: "covers" | "ebooks") {
-  if (!file) {
-    return null;
-  }
-
-  const isCover = folder === "covers";
-  const isAllowed = isCover ? file.type.startsWith("image/") : file.type === "application/pdf";
-
-  if (!isAllowed) {
-    throw new Error(isCover ? "Cover upload must be an image." : "Ebook upload must be a PDF.");
-  }
-
-  const extension = getExtension(file, isCover ? ".jpg" : ".pdf");
-  const baseName = slugify(path.parse(file.name).name) || folder;
-  const fileName = `${Date.now()}-${baseName}${extension}`;
-  const uploadDir = path.join(uploadRoot, folder);
-
-  await mkdir(uploadDir, { recursive: true });
-  await writeFile(path.join(uploadDir, fileName), Buffer.from(await file.arrayBuffer()));
-
-  return `/uploads/${folder}/${fileName}`;
 }
 
 async function requireAdmin() {
@@ -162,10 +103,8 @@ export async function saveEbookAction(formData: FormData) {
     : null;
 
   const slug = await resolveUniqueSlug(getFormString(formData, "slug") || title, ebookId || undefined);
-  const uploadedCoverUrl = await saveUpload(getUploadedFile(formData, "coverFile"), "covers");
-  const uploadedFileUrl = await saveUpload(getUploadedFile(formData, "ebookFile"), "ebooks");
-  const coverImageUrl = uploadedCoverUrl ?? (getFormString(formData, "coverImageUrl") || null);
-  const fileUrl = uploadedFileUrl ?? (getFormString(formData, "fileUrl") || null);
+  const coverImageUrl = getFormString(formData, "coverImageUrl") || null;
+  const fileUrl = getFormString(formData, "fileUrl") || null;
   const payload = {
     slug,
     title,

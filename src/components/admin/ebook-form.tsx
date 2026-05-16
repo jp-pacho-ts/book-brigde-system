@@ -1,6 +1,11 @@
-import type { ReactNode } from "react";
+"use client";
+
+import type { FormEvent, ReactNode } from "react";
+import { useState } from "react";
+import { upload } from "@vercel/blob/client";
 import type { Ebook } from "@/lib/ebooks";
 import { saveEbookAction } from "@/app/admin/actions";
+import { slugify } from "@/lib/ebook-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,9 +17,65 @@ type EbookFormProps = {
 
 export function EbookForm({ ebook }: EbookFormProps) {
   const isEditing = Boolean(ebook);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setStatus("");
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const title = String(formData.get("title") ?? "ebook");
+    const slug = slugify(String(formData.get("slug") ?? "") || title) || "ebook";
+    const coverFile = getFile(formData, "coverFile");
+    const ebookFile = getFile(formData, "ebookFile");
+
+    try {
+      if (coverFile) {
+        setStatus("Uploading cover image...");
+        const coverBlob = await upload(`bookbridge/covers/${slug}-${coverFile.name}`, coverFile, {
+          access: "public",
+          handleUploadUrl: "/api/admin/blob-upload"
+        });
+
+        formData.set("coverImageUrl", coverBlob.url);
+      }
+
+      if (ebookFile) {
+        if (ebookFile.type !== "application/pdf") {
+          setError("PDF upload must use a PDF file.");
+          return;
+        }
+
+        setStatus("Uploading PDF to Vercel Blob...");
+        const ebookBlob = await upload(`bookbridge/ebooks/${slug}-${ebookFile.name}`, ebookFile, {
+          access: "public",
+          handleUploadUrl: "/api/admin/blob-upload"
+        });
+
+        formData.set("fileUrl", ebookBlob.url);
+      }
+
+      formData.delete("coverFile");
+      formData.delete("ebookFile");
+
+      setStatus("Saving ebook...");
+      await saveEbookAction(formData);
+    } catch (uploadError) {
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Upload failed. Make sure Vercel Blob is connected to this project.";
+
+      setError(message);
+      setStatus("");
+    }
+  }
 
   return (
-    <form action={saveEbookAction} className="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <input type="hidden" name="id" value={ebook?.id ?? ""} />
 
       <Card className="shadow-soft">
@@ -116,7 +177,9 @@ export function EbookForm({ ebook }: EbookFormProps) {
         <Card>
           <CardHeader className="border-b">
             <h2 className="text-xl font-semibold text-foreground">Files</h2>
-            <p className="text-sm text-muted-foreground">Upload local files or paste hosted URLs.</p>
+            <p className="text-sm text-muted-foreground">
+              Uploads go directly to Vercel Blob, then the hosted URL is saved.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             <Field label="Cover image URL" htmlFor="coverImageUrl">
@@ -124,12 +187,12 @@ export function EbookForm({ ebook }: EbookFormProps) {
                 id="coverImageUrl"
                 name="coverImageUrl"
                 defaultValue={ebook?.coverImageUrl ?? ""}
-                placeholder="/uploads/covers/book.jpg"
+                placeholder="https://..."
               />
             </Field>
 
             <Field label="Upload cover image" htmlFor="coverFile">
-              <Input id="coverFile" name="coverFile" type="file" accept="image/*" />
+              <Input id="coverFile" name="coverFile" type="file" accept="image/png,image/jpeg,image/webp" />
             </Field>
 
             <Field label="PDF URL" htmlFor="fileUrl">
@@ -137,22 +200,42 @@ export function EbookForm({ ebook }: EbookFormProps) {
                 id="fileUrl"
                 name="fileUrl"
                 defaultValue={ebook?.fileUrl ?? ""}
-                placeholder="/uploads/ebooks/book.pdf"
+                placeholder="https://..."
               />
             </Field>
 
             <Field label="Upload PDF" htmlFor="ebookFile">
               <Input id="ebookFile" name="ebookFile" type="file" accept="application/pdf" />
             </Field>
+
+            {status ? (
+              <p className="rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary">{status}</p>
+            ) : null}
+
+            {error ? (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                {error}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 
-        <Button type="submit" className="h-11 w-full">
-          {isEditing ? "Save changes" : "Create ebook"}
+        <Button type="submit" className="h-11 w-full" disabled={Boolean(status)}>
+          {status ? "Working..." : isEditing ? "Save changes" : "Create ebook"}
         </Button>
       </div>
     </form>
   );
+}
+
+function getFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+
+  if (value instanceof File && value.size > 0) {
+    return value;
+  }
+
+  return null;
 }
 
 function Field({

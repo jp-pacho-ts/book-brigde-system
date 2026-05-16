@@ -14,6 +14,12 @@ Admin tools are available at `/admin/login`. Admins can add, edit, and delete eb
 images and PDF files, assign categories, and choose whether each ebook is free or requires a
 subscription. Superadmins can also create, edit, and delete admin accounts.
 
+## Production File Uploads
+
+Large PDF uploads must go directly to Vercel Blob. In Vercel, create a Blob store for this project
+so `BLOB_READ_WRITE_TOKEN` is available in production. The admin form uploads the PDF to Blob first,
+then saves the returned hosted URL in Neon.
+
 ## Sample Checkout
 
 The checkout page activates premium access locally without showing or requiring card, wallet, or bank details.
