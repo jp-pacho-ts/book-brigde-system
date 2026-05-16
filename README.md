@@ -8,6 +8,11 @@ The payment flow is intentionally sample-only. It does not use card details or a
 
 - Free user: `student@bookbridge.test` / `student123`
 - Premium user: `premium@bookbridge.test` / `premium123`
+- Superadmin dashboard: `admin@bookbridge.test` / `admin123`
+
+Admin tools are available at `/admin/login`. Admins can add, edit, and delete ebooks, upload cover
+images and PDF files, assign categories, and choose whether each ebook is free or requires a
+subscription. Superadmins can also create, edit, and delete admin accounts.
 
 ## Sample Checkout
 
@@ -24,11 +29,15 @@ Open `http://localhost:3000`.
 
 ## Optional Prisma Setup
 
-Create `.env` from `.env.example`, update your PostgreSQL connection string, then run:
+Keep your existing `.env` database connection string, then run:
 
 ```bash
 npm run prisma:generate
-npm run prisma:migrate
+npx prisma db push
 npm run prisma:seed
 ```
+
+The seed script imports the engineering PDFs from `EBOOK_SOURCE_DIR` only when you choose to set it.
+If it is not set, it uses the local download folder that was used during setup and copies the PDFs
+into `public/uploads/ebooks`.
 # book-bridge-system

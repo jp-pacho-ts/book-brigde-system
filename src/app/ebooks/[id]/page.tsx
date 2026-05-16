@@ -3,20 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen, CalendarDays, Crown, FileText, Library, UserRound } from "lucide-react";
 import { EbookCover } from "@/components/ebook-cover";
-import { ebooks, getEbookById } from "@/lib/ebooks";
+import { EbookReadAction } from "@/components/ebook-read-action";
+import { getEbookBySlug } from "@/lib/ebooks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export function generateStaticParams() {
-  return ebooks.map((ebook) => ({
-    id: ebook.id
-  }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function EbookDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const ebook = getEbookById(id);
+  const ebook = await getEbookBySlug(id);
 
   if (!ebook) {
     notFound();
@@ -75,6 +72,10 @@ export default async function EbookDetailPage({ params }: { params: Promise<{ id
                   label="Access"
                   value={ebook.isPremium ? "Premium" : "Free"}
                 />
+              </div>
+
+              <div className="mt-6">
+                <EbookReadAction fileUrl={ebook.fileUrl} isPremium={ebook.isPremium} />
               </div>
             </div>
           </div>

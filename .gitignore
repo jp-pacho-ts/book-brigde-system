@@ -5,3 +5,7 @@ node_modules
 dist
 coverage
 *.log
+public/uploads/ebooks/*.pdf
+public/uploads/covers/*
+!public/uploads/ebooks/.gitkeep
+!public/uploads/covers/.gitkeep

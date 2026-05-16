@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { EbookCover } from "@/components/ebook-cover";
 import { useAuth } from "@/components/auth-provider";
-import { categories, ebooks, type Ebook } from "@/lib/ebooks";
+import type { Ebook } from "@/lib/ebooks";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export function LibraryHome() {
+export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categories: string[] }) {
   const { isSubscribed } = useAuth();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
@@ -126,7 +126,7 @@ export function LibraryHome() {
 
               <div className="mt-5 grid grid-cols-3 gap-3">
                 {ebooks.slice(0, 3).map((ebook) => (
-                  <Link key={ebook.id} href={`/ebooks/${ebook.id}`} className="block">
+                  <Link key={ebook.id} href={`/ebooks/${ebook.slug}`} className="block">
                     <EbookCover ebook={ebook} compact />
                   </Link>
                 ))}
@@ -245,7 +245,7 @@ function EbookCard({ ebook, isSubscribed }: { ebook: Ebook; isSubscribed: boolea
             </Button>
           </Link>
         ) : (
-          <Link href={`/ebooks/${ebook.id}`} className="mt-4">
+          <Link href={`/ebooks/${ebook.slug}`} className="mt-4">
             <Button className="w-full">
               <BookMarked size={16} aria-hidden="true" />
               Open title
