@@ -6,6 +6,8 @@ import {
   BadgeCheck,
   BookMarked,
   BookText,
+  ChevronLeft,
+  ChevronRight,
   Crown,
   Library,
   LockKeyhole,
@@ -15,17 +17,20 @@ import {
 import { EbookCover } from "@/components/ebook-cover";
 import { useAuth } from "@/components/auth-provider";
 import type { Ebook } from "@/lib/ebooks";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+const EBOOKS_PER_PAGE = 6;
+
 export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categories: string[] }) {
   const { isSubscribed } = useAuth();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const [page, setPage] = useState(1);
 
   const filteredEbooks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -41,7 +46,22 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
 
       return matchesCategory && matchesSearch;
     });
+  }, [category, ebooks, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredEbooks.length / EBOOKS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStartIndex = (currentPage - 1) * EBOOKS_PER_PAGE;
+  const paginatedEbooks = filteredEbooks.slice(pageStartIndex, pageStartIndex + EBOOKS_PER_PAGE);
+  const visibleStart = filteredEbooks.length === 0 ? 0 : pageStartIndex + 1;
+  const visibleEnd = Math.min(pageStartIndex + EBOOKS_PER_PAGE, filteredEbooks.length);
+
+  useEffect(() => {
+    setPage(1);
   }, [category, query]);
+
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages));
+  }, [totalPages]);
 
   return (
     <main className="surface-line">
@@ -73,40 +93,6 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
                   <ArrowRight size={16} aria-hidden="true" />
                 </Button>
               </Link>
-            </div>
-
-            <div className="mt-7 max-w-2xl rounded-lg border bg-background p-2 shadow-sm">
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  size={20}
-                  aria-hidden="true"
-                />
-                <Input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search ebooks, authors, or categories"
-                  className="h-14 border-0 bg-background pl-12 text-base shadow-none"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {categories.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setCategory(item)}
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-sm font-medium transition",
-                    category === item
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {item}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -157,12 +143,48 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
             <h2 className="mt-1 text-3xl font-semibold text-foreground">Available ebooks</h2>
           </div>
           <p className="text-sm font-medium text-muted-foreground">
-            Showing {filteredEbooks.length} of {ebooks.length} titles
+            Showing {visibleStart}-{visibleEnd} of {filteredEbooks.length} titles
           </p>
         </div>
 
+        <div className="mt-6 rounded-lg border bg-background p-4 shadow-sm">
+          <div className="grid gap-4 lg:grid-cols-[minmax(18rem,0.85fr)_1fr] lg:items-start">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                size={20}
+                aria-hidden="true"
+              />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search ebooks, authors, or categories"
+                className="h-12 pl-12 text-base shadow-none"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {categories.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setCategory(item)}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-sm font-medium transition",
+                    category === item
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredEbooks.map((ebook) => (
+          {paginatedEbooks.map((ebook) => (
             <EbookCard key={ebook.id} ebook={ebook} isSubscribed={isSubscribed} />
           ))}
         </div>
@@ -174,8 +196,74 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
             <p className="mt-1 text-sm text-muted-foreground">Try another keyword or category.</p>
           </Card>
         ) : null}
+
+        {filteredEbooks.length > EBOOKS_PER_PAGE ? (
+          <PaginationControls page={currentPage} totalPages={totalPages} onPageChange={setPage} />
+        ) : null}
       </section>
     </main>
+  );
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  onPageChange
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  return (
+    <div className="mt-8 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm font-medium text-muted-foreground">
+        Page {page} of {totalPages}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={page === 1}
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          aria-label="Previous page"
+        >
+          <ChevronLeft size={16} aria-hidden="true" />
+          Previous
+        </Button>
+
+        {pageNumbers.map((pageNumber) => (
+          <button
+            key={pageNumber}
+            type="button"
+            onClick={() => onPageChange(pageNumber)}
+            aria-current={page === pageNumber ? "page" : undefined}
+            className={cn(
+              "grid h-9 min-w-9 place-items-center rounded-md border px-3 text-sm font-medium transition",
+              page === pageNumber
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            {pageNumber}
+          </button>
+        ))}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={page === totalPages}
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          aria-label="Next page"
+        >
+          Next
+          <ChevronRight size={16} aria-hidden="true" />
+        </Button>
+      </div>
+    </div>
   );
 }
 

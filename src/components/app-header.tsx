@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
   BookOpen,
+  ChevronDown,
+  Crown,
   FilePlus2,
   LayoutDashboard,
   LogIn,
@@ -19,15 +22,37 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { logoutAdminAction } from "@/app/admin/actions";
 
-const navLinks = [
-  { href: "/", label: "Library" },
-  { href: "/subscribe", label: "Subscribe" },
-  { href: "/account", label: "Account" }
-];
-
 export function AppHeader() {
   const pathname = usePathname();
   const { user, logout, isSubscribed } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    const closeMenuOnOutsideClick = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    const closeMenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeMenuOnOutsideClick);
+    document.addEventListener("keydown", closeMenuOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeMenuOnOutsideClick);
+      document.removeEventListener("keydown", closeMenuOnEscape);
+    };
+  }, [isMenuOpen]);
 
   if (pathname.startsWith("/admin")) {
     return <AdminHeader pathname={pathname} />;
@@ -48,56 +73,126 @@ export function AppHeader() {
           </span>
         </Link>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-          <nav className="flex w-full flex-wrap items-center gap-1 rounded-lg border bg-background p-1 shadow-sm lg:w-auto">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <nav className="flex w-full items-center gap-1 rounded-lg border bg-background p-1 shadow-sm sm:w-auto">
+            <Link
+              href="/"
+              className={cn(
+                "rounded-md px-3 py-2 text-sm font-medium transition",
+                pathname === "/"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              Library
+            </Link>
           </nav>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {user ? (
-              <>
-                <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm shadow-sm">
-                  <UserRound size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="max-w-40 truncate font-medium">{user.name}</span>
+          <div ref={menuRef} className="relative">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between bg-background shadow-sm sm:min-w-52"
+              aria-expanded={isMenuOpen}
+              aria-haspopup="menu"
+              onClick={() => setIsMenuOpen((open) => !open)}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <UserRound size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="truncate">{user ? user.name : "Menu"}</span>
+                {user ? (
                   <Badge variant={isSubscribed ? "default" : "secondary"} className="gap-1">
                     {isSubscribed ? <Sparkles size={12} aria-hidden="true" /> : null}
                     {isSubscribed ? "Premium" : "Free"}
                   </Badge>
+                ) : null}
+              </span>
+              <ChevronDown
+                size={16}
+                className={cn("shrink-0 text-muted-foreground transition", isMenuOpen ? "rotate-180" : null)}
+                aria-hidden="true"
+              />
+            </Button>
+
+            {isMenuOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-full min-w-64 rounded-lg border bg-background p-2 shadow-lg sm:w-72"
+              >
+                {user ? (
+                  <div className="border-b px-3 py-2">
+                    <p className="truncate text-sm font-semibold text-foreground">{user.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                  </div>
+                ) : null}
+
+                <div className="py-1">
+                  {user ? (
+                    <HeaderMenuLink
+                      href="/account"
+                      icon={UserRound}
+                      label="Account"
+                      onSelect={() => setIsMenuOpen(false)}
+                    />
+                  ) : null}
+                  <HeaderMenuLink
+                    href="/subscribe"
+                    icon={Crown}
+                    label={isSubscribed ? "Manage subscription" : "Subscription"}
+                    onSelect={() => setIsMenuOpen(false)}
+                  />
+                  {user ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        logout();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      <LogOut size={16} aria-hidden="true" />
+                      Logout
+                    </button>
+                  ) : (
+                    <HeaderMenuLink
+                      href="/login"
+                      icon={LogIn}
+                      label="Login"
+                      onSelect={() => setIsMenuOpen(false)}
+                    />
+                  )}
                 </div>
-                <Button type="button" onClick={logout} variant="outline" size="sm" title="Log out">
-                  <LogOut size={16} aria-hidden="true" />
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <Link href="/login">
-                <Button size="sm" className="shadow-sm">
-                  <LogIn size={16} aria-hidden="true" />
-                  Login
-                </Button>
-              </Link>
-            )}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
     </header>
+  );
+}
+
+function HeaderMenuLink({
+  href,
+  icon: Icon,
+  label,
+  onSelect
+}: {
+  href: string;
+  icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      role="menuitem"
+      onClick={onSelect}
+      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+    >
+      <Icon size={16} aria-hidden={true} />
+      {label}
+    </Link>
   );
 }
 
