@@ -75,7 +75,7 @@ export default async function EbookDetailPage({ params }: { params: Promise<{ id
               </div>
 
               <div className="mt-6">
-                <EbookReadAction fileUrl={ebook.fileUrl} isPremium={ebook.isPremium} />
+                <EbookReadAction fileUrl={ebook.fileUrl} isPremium={ebook.isPremium} slug={ebook.slug} />
               </div>
             </div>
           </div>

@@ -6,7 +6,8 @@ import { AuthProvider } from "@/components/auth-provider";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hideChrome = pathname === "/login" || pathname === "/admin/login";
+  const isReaderPage = /^\/ebooks\/[^/]+\/read$/.test(pathname);
+  const hideChrome = pathname === "/login" || pathname === "/admin/login" || isReaderPage;
 
   return (
     <AuthProvider>
