@@ -123,10 +123,20 @@ export default async function AdminDashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1">
-                    <BookOpen size={14} aria-hidden="true" />
-                    {ebook.fileUrl ? "PDF" : "No PDF"}
-                  </span>
+                  {ebook.fileUrl ? (
+                    <Link
+                      href={`/ebooks/${ebook.slug}/read`}
+                      className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 font-medium hover:text-primary"
+                    >
+                      <BookOpen size={14} aria-hidden="true" />
+                      Reader
+                    </Link>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1">
+                      <BookOpen size={14} aria-hidden="true" />
+                      No PDF
+                    </span>
+                  )}
                   <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1">
                     <Image size={14} aria-hidden="true" />
                     {ebook.coverImageUrl ? "Cover" : "Generated"}

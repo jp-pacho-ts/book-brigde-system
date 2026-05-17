@@ -244,11 +244,23 @@ function EbookCard({ ebook, isSubscribed }: { ebook: Ebook; isSubscribed: boolea
               Upgrade to read
             </Button>
           </Link>
+        ) : ebook.fileUrl ? (
+          <Link href={`/ebooks/${ebook.slug}/read`} className="mt-4">
+            <Button className="w-full">
+              <BookMarked size={16} aria-hidden="true" />
+              Open reader
+              <ArrowRight
+                className="transition group-hover:translate-x-0.5"
+                size={16}
+                aria-hidden="true"
+              />
+            </Button>
+          </Link>
         ) : (
           <Link href={`/ebooks/${ebook.slug}`} className="mt-4">
             <Button className="w-full">
               <BookMarked size={16} aria-hidden="true" />
-              Open title
+              View details
               <ArrowRight
                 className="transition group-hover:translate-x-0.5"
                 size={16}
