@@ -89,6 +89,8 @@ export function EbookForm({ ebook, uploadAuthToken }: EbookFormProps) {
   return (
     <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <input type="hidden" name="id" value={ebook?.id ?? ""} />
+      <input type="hidden" name="coverImageUrl" defaultValue={ebook?.coverImageUrl ?? ""} />
+      <input type="hidden" name="fileUrl" defaultValue={ebook?.fileUrl ?? ""} />
 
       <Card className="shadow-soft">
         <CardHeader className="border-b">
@@ -194,26 +196,8 @@ export function EbookForm({ ebook, uploadAuthToken }: EbookFormProps) {
             </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
-            <Field label="Cover image URL" htmlFor="coverImageUrl">
-              <Input
-                id="coverImageUrl"
-                name="coverImageUrl"
-                defaultValue={ebook?.coverImageUrl ?? ""}
-                placeholder="https://..."
-              />
-            </Field>
-
             <Field label="Upload cover image" htmlFor="coverFile">
               <Input id="coverFile" name="coverFile" type="file" accept="image/png,image/jpeg,image/webp" />
-            </Field>
-
-            <Field label="PDF URL" htmlFor="fileUrl">
-              <Input
-                id="fileUrl"
-                name="fileUrl"
-                defaultValue={ebook?.fileUrl ?? ""}
-                placeholder="https://..."
-              />
             </Field>
 
             <Field label="Upload PDF" htmlFor="ebookFile">
