@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 const ADMIN_SESSION_COOKIE = "bookbridge_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
+const UPLOAD_TOKEN_TTL_SECONDS = 60 * 10;
 const HASH_ALGORITHM = "scrypt";
 
 export type AdminSession = {
@@ -42,6 +43,14 @@ function createSessionToken(adminId: string) {
   return `${payload}.${signature}`;
 }
 
+export function createAdminUploadToken(adminId: string) {
+  const expiresAt = Math.floor(Date.now() / 1000) + UPLOAD_TOKEN_TTL_SECONDS;
+  const payload = `upload.${adminId}.${expiresAt}`;
+  const signature = signSessionPayload(payload);
+
+  return `${payload}.${signature}`;
+}
+
 function verifySessionToken(token: string) {
   const [adminId, expiresAtValue, signature] = token.split(".");
 
@@ -56,6 +65,29 @@ function verifySessionToken(token: string) {
   }
 
   const payload = `${adminId}.${expiresAtValue}`;
+  const expectedSignature = signSessionPayload(payload);
+
+  if (!safeEquals(signature, expectedSignature)) {
+    return null;
+  }
+
+  return adminId;
+}
+
+function verifyAdminUploadToken(token: string) {
+  const [purpose, adminId, expiresAtValue, signature] = token.split(".");
+
+  if (purpose !== "upload" || !adminId || !expiresAtValue || !signature) {
+    return null;
+  }
+
+  const expiresAt = Number(expiresAtValue);
+
+  if (!Number.isFinite(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) {
+    return null;
+  }
+
+  const payload = `${purpose}.${adminId}.${expiresAtValue}`;
   const expectedSignature = signSessionPayload(payload);
 
   if (!safeEquals(signature, expectedSignature)) {
@@ -111,6 +143,20 @@ export async function getAdminSessionFromCookieHeader(cookieHeader: string | nul
   return getAdminSessionFromToken(token);
 }
 
+export async function getAdminSessionFromUploadToken(token: string | null): Promise<AdminSession | null> {
+  if (!token) {
+    return null;
+  }
+
+  const adminId = verifyAdminUploadToken(token);
+
+  if (!adminId) {
+    return null;
+  }
+
+  return getAdminById(adminId);
+}
+
 async function getAdminSessionFromToken(token?: string): Promise<AdminSession | null> {
   if (!token) {
     return null;
@@ -122,6 +168,10 @@ async function getAdminSessionFromToken(token?: string): Promise<AdminSession | 
     return null;
   }
 
+  return getAdminById(adminId);
+}
+
+function getAdminById(adminId: string) {
   return prisma.adminUser.findUnique({
     where: { id: adminId },
     select: {

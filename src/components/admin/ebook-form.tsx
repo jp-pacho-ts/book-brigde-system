@@ -13,9 +13,10 @@ import { Label } from "@/components/ui/label";
 
 type EbookFormProps = {
   ebook?: Ebook;
+  uploadAuthToken: string;
 };
 
-export function EbookForm({ ebook }: EbookFormProps) {
+export function EbookForm({ ebook, uploadAuthToken }: EbookFormProps) {
   const isEditing = Boolean(ebook);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -34,7 +35,7 @@ export function EbookForm({ ebook }: EbookFormProps) {
 
     try {
       if (coverFile || ebookFile) {
-        await assertBlobUploadReady();
+        await assertBlobUploadReady(uploadAuthToken);
       }
 
       if (coverFile) {
@@ -42,7 +43,8 @@ export function EbookForm({ ebook }: EbookFormProps) {
         const coverBlob = await upload(`bookbridge/covers/${slug}-${getSafeFileName(coverFile.name)}`, coverFile, {
           access: "public",
           contentType: coverFile.type,
-          handleUploadUrl: "/api/admin/blob-upload"
+          handleUploadUrl: "/api/admin/blob-upload",
+          headers: getUploadHeaders(uploadAuthToken)
         });
 
         formData.set("coverImageUrl", coverBlob.url);
@@ -59,6 +61,7 @@ export function EbookForm({ ebook }: EbookFormProps) {
           access: "public",
           contentType: "application/pdf",
           handleUploadUrl: "/api/admin/blob-upload",
+          headers: getUploadHeaders(uploadAuthToken),
           multipart: true,
           onUploadProgress: ({ percentage }) => {
             setStatus(`Uploading PDF to Vercel Blob... ${Math.round(percentage)}%`);
@@ -248,10 +251,11 @@ function getFile(formData: FormData, key: string) {
   return null;
 }
 
-async function assertBlobUploadReady() {
+async function assertBlobUploadReady(uploadAuthToken: string) {
   const response = await fetch("/api/admin/blob-upload", {
     method: "GET",
-    credentials: "same-origin"
+    credentials: "same-origin",
+    headers: getUploadHeaders(uploadAuthToken)
   });
 
   if (response.ok) {
@@ -260,6 +264,12 @@ async function assertBlobUploadReady() {
 
   const payload = (await response.json().catch(() => null)) as { error?: string } | null;
   throw new Error(payload?.error ?? "Vercel Blob upload route is not ready.");
+}
+
+function getUploadHeaders(uploadAuthToken: string) {
+  return {
+    Authorization: `Bearer ${uploadAuthToken}`
+  };
 }
 
 function getSafeFileName(fileName: string) {

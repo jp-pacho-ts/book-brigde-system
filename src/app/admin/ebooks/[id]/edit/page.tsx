@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getAdminSession } from "@/lib/admin-auth";
+import { createAdminUploadToken, getAdminSession } from "@/lib/admin-auth";
 import { formatEbook } from "@/lib/ebooks";
 import { prisma } from "@/lib/prisma";
 import { EbookForm } from "@/components/admin/ebook-form";
@@ -32,7 +32,7 @@ export default async function EditEbookPage({ params }: { params: Promise<{ id: 
         </Link>
 
         <div className="mt-6">
-          <EbookForm ebook={formatEbook(ebook)} />
+          <EbookForm ebook={formatEbook(ebook)} uploadAuthToken={createAdminUploadToken(admin.id)} />
         </div>
       </section>
     </main>

@@ -1,6 +1,9 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
-import { getAdminSessionFromCookieHeader } from "@/lib/admin-auth";
+import {
+  getAdminSessionFromCookieHeader,
+  getAdminSessionFromUploadToken
+} from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,19 +32,35 @@ function jsonResponse(payload: Record<string, unknown>, status = 200) {
 }
 
 async function getAdminFromRequest(request: Request) {
-  return getAdminSessionFromCookieHeader(request.headers.get("cookie"));
+  const cookieAdmin = await getAdminSessionFromCookieHeader(request.headers.get("cookie"));
+
+  if (cookieAdmin) {
+    return cookieAdmin;
+  }
+
+  return getAdminSessionFromUploadToken(getBearerToken(request));
+}
+
+function getBearerToken(request: Request) {
+  const authorization = request.headers.get("authorization");
+
+  if (!authorization?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return authorization.slice("Bearer ".length).trim();
 }
 
 export async function GET(request: Request) {
-  const hasCookieHeader = Boolean(request.headers.get("cookie"));
+  const hasCredential = Boolean(request.headers.get("cookie") || getBearerToken(request));
   const admin = await getAdminFromRequest(request);
 
   if (!admin) {
     return jsonResponse(
       {
-        error: hasCookieHeader
-          ? "Admin session is invalid or expired. Sign out, sign in again at /admin/login, then retry."
-          : "Admin session cookie was not sent. Sign in at /admin/login on this same domain, then retry."
+        error: hasCredential
+          ? "Admin upload access is invalid or expired. Refresh the admin page, then retry."
+          : "Admin upload access was not sent. Sign in at /admin/login on this same domain, then retry."
       },
       401
     );

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getAdminSession } from "@/lib/admin-auth";
+import { createAdminUploadToken, getAdminSession } from "@/lib/admin-auth";
 import { EbookForm } from "@/components/admin/ebook-form";
 
 export default async function NewEbookPage() {
@@ -20,7 +20,7 @@ export default async function NewEbookPage() {
         </Link>
 
         <div className="mt-6">
-          <EbookForm />
+          <EbookForm uploadAuthToken={createAdminUploadToken(admin.id)} />
         </div>
       </section>
     </main>
