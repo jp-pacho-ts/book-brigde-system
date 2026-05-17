@@ -20,10 +20,18 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const DEMO_CARD_NUMBER = "4242 4242 4242 4242";
+const DEMO_CARD_DIGITS = "4242424242424242";
+const DEMO_EXPIRY = "12/34";
+const DEMO_CVC = "123";
+
 export default function SubscribePage() {
   const router = useRouter();
   const { user, isSubscribed, activateSubscription } = useAuth();
-  const [accountName, setAccountName] = useState("Student Reader");
+  const [cardholderName, setCardholderName] = useState("Student Reader");
+  const [cardNumber, setCardNumber] = useState(DEMO_CARD_NUMBER);
+  const [expiry, setExpiry] = useState(DEMO_EXPIRY);
+  const [cvc, setCvc] = useState(DEMO_CVC);
   const [message, setMessage] = useState("");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -35,8 +43,23 @@ export default function SubscribePage() {
       return;
     }
 
-    if (!accountName.trim()) {
-      setMessage("Enter an account name before confirming.");
+    if (!cardholderName.trim()) {
+      setMessage("Enter the demo cardholder name before confirming.");
+      return;
+    }
+
+    if (normalizeCardNumber(cardNumber) !== DEMO_CARD_DIGITS) {
+      setMessage("Use the demo card number to activate the sample membership.");
+      return;
+    }
+
+    if (!isFutureExpiry(expiry)) {
+      setMessage("Enter a future expiry date in MM/YY format.");
+      return;
+    }
+
+    if (!/^\d{3,4}$/.test(cvc)) {
+      setMessage("Enter a 3 or 4 digit demo CVC.");
       return;
     }
 
@@ -57,20 +80,20 @@ export default function SubscribePage() {
               Upgrade your reading access.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-              Premium opens the full shelf. This sample checkout activates access in your browser only,
-              so no payment details are collected.
+              Premium opens the full shelf. This sample checkout uses demo card details only,
+              activates access in your browser, and never sends a payment.
             </p>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
               <Benefit
                 icon={<ShieldCheck size={22} aria-hidden="true" />}
-                title="No payment details"
-                description="No card, wallet, or bank information is collected."
+                title="Demo card only"
+                description="Sample values are checked locally and discarded."
               />
               <Benefit
                 icon={<LockKeyhole size={22} aria-hidden="true" />}
-                title="Clear access"
-                description="Premium titles unlock immediately after activation."
+                title="No gateway charge"
+                description="Premium titles unlock immediately in this demo."
               />
             </div>
           </div>
@@ -88,7 +111,7 @@ export default function SubscribePage() {
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <DemoField label="Mode" value="Sample" />
-              <DemoField label="Payment" value="None" />
+              <DemoField label="Payment" value="Demo card" />
               <DemoField label="Charge" value="PHP 0" />
             </div>
           </Card>
@@ -150,9 +173,9 @@ export default function SubscribePage() {
                 <div className="flex items-center justify-between border-b pb-5">
                   <div>
                     <h2 className="text-2xl font-semibold text-foreground">Checkout</h2>
-                    <p className="text-sm text-muted-foreground">Sample subscription activation</p>
+                    <p className="text-sm text-muted-foreground">Demo card subscription activation</p>
                   </div>
-                  <Badge variant="secondary">No charge</Badge>
+                  <Badge variant="secondary">Demo mode</Badge>
                 </div>
 
                 {!user ? (
@@ -165,21 +188,66 @@ export default function SubscribePage() {
                 ) : null}
 
                 <div>
-                  <Label htmlFor="account-name">Account name</Label>
+                  <Label htmlFor="cardholder-name">Cardholder name</Label>
                   <Input
-                    id="account-name"
-                    value={accountName}
-                    onChange={(event) => setAccountName(event.target.value)}
+                    id="cardholder-name"
+                    name="demo-cardholder-name"
+                    value={cardholderName}
+                    onChange={(event) => setCardholderName(event.target.value)}
                     className="mt-2 h-11"
+                    autoComplete="off"
                     required
                   />
                 </div>
 
+                <div>
+                  <Label htmlFor="demo-card-number">Card number</Label>
+                  <Input
+                    id="demo-card-number"
+                    name="demo-card-number"
+                    value={cardNumber}
+                    onChange={(event) => setCardNumber(formatCardNumber(event.target.value))}
+                    className="mt-2 h-11"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="demo-expiry">Expiry</Label>
+                    <Input
+                      id="demo-expiry"
+                      name="demo-expiry"
+                      value={expiry}
+                      onChange={(event) => setExpiry(formatExpiry(event.target.value))}
+                      className="mt-2 h-11"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="demo-cvc">CVC</Label>
+                    <Input
+                      id="demo-cvc"
+                      name="demo-cvc"
+                      value={cvc}
+                      onChange={(event) => setCvc(event.target.value.replace(/\D/g, "").slice(0, 4))}
+                      className="mt-2 h-11"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="rounded-lg border bg-muted/50 p-4">
-                  <p className="text-sm font-semibold text-foreground">Activation confirmation</p>
+                  <p className="text-sm font-semibold text-foreground">Demo activation confirmation</p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Confirming will activate premium access for this browser session. No card,
-                    wallet, bank, or payment gateway information is used.
+                    The demo card fields are validated in the browser and discarded after activation.
+                    No real card, wallet, bank, or payment gateway information is used.
                   </p>
                 </div>
 
@@ -191,7 +259,7 @@ export default function SubscribePage() {
 
                 <Button type="submit" className="h-11 w-full">
                   <CreditCard size={18} aria-hidden="true" />
-                  Activate premium
+                  Activate with demo card
                 </Button>
               </form>
             </CardContent>
@@ -200,6 +268,42 @@ export default function SubscribePage() {
       </section>
     </main>
   );
+}
+
+function normalizeCardNumber(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function formatCardNumber(value: string) {
+  return normalizeCardNumber(value)
+    .slice(0, 16)
+    .replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+function formatExpiry(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
+
+function isFutureExpiry(value: string) {
+  const [monthValue, yearValue] = value.split("/");
+  const month = Number(monthValue);
+  const year = Number(yearValue);
+
+  if (!monthValue || !yearValue || month < 1 || month > 12 || yearValue.length !== 2) {
+    return false;
+  }
+
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentYear = currentDate.getFullYear() % 100;
+
+  return year > currentYear || (year === currentYear && month >= currentMonth);
 }
 
 function Benefit({

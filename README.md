@@ -2,7 +2,8 @@
 
 A focused ebook subscription prototype built with Next.js, TypeScript, Tailwind CSS, Prisma ORM, and a PostgreSQL schema.
 
-The payment flow is intentionally sample-only. It does not use card details or any real payment gateway.
+The payment flow is intentionally sample-only. It uses demo card fields only and does not send
+or store any card details through a real payment gateway.
 
 ## Sample Login
 
@@ -22,7 +23,8 @@ then saves the returned hosted URL in Neon.
 
 ## Sample Checkout
 
-The checkout page activates premium access locally without showing or requiring card, wallet, or bank details.
+The checkout page activates premium access locally with demo card fields. The preset demo number is
+`4242 4242 4242 4242`; the values are validated in the browser and discarded after activation.
 
 ## Run Locally
 
