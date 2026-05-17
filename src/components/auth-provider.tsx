@@ -38,14 +38,14 @@ const STORAGE_KEY = "bookbridge_demo_user";
 const demoUsers: DemoUserWithPassword[] = [
   {
     id: "user_student",
-    name: "Student Demo",
+    name: "Student Reader",
     email: "student@bookbridge.test",
     password: "student123",
     subscriptionStatus: "free"
   },
   {
     id: "user_premium",
-    name: "Premium Demo",
+    name: "Premium Reader",
     email: "premium@bookbridge.test",
     password: "premium123",
     subscriptionStatus: "active",
