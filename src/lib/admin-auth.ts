@@ -102,6 +102,16 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
 
+  return getAdminSessionFromToken(token);
+}
+
+export async function getAdminSessionFromCookieHeader(cookieHeader: string | null): Promise<AdminSession | null> {
+  const token = getCookieValue(cookieHeader, ADMIN_SESSION_COOKIE);
+
+  return getAdminSessionFromToken(token);
+}
+
+async function getAdminSessionFromToken(token?: string): Promise<AdminSession | null> {
   if (!token) {
     return null;
   }
@@ -121,6 +131,18 @@ export async function getAdminSession(): Promise<AdminSession | null> {
       role: true
     }
   });
+}
+
+function getCookieValue(cookieHeader: string | null, name: string) {
+  if (!cookieHeader) {
+    return undefined;
+  }
+
+  const cookiesByName = cookieHeader.split(";").map((cookie) => cookie.trim());
+  const cookiePrefix = `${name}=`;
+  const cookie = cookiesByName.find((item) => item.startsWith(cookiePrefix));
+
+  return cookie ? decodeURIComponent(cookie.slice(cookiePrefix.length)) : undefined;
 }
 
 export async function requireAdminSession() {

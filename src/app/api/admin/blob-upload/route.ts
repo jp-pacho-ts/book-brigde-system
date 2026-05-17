@@ -1,6 +1,9 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/admin-auth";
+import { getAdminSessionFromCookieHeader } from "@/lib/admin-auth";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function getBlobTokenError() {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
@@ -16,20 +19,41 @@ function getBlobTokenError() {
   return null;
 }
 
-export async function GET() {
-  const admin = await getAdminSession();
+function jsonResponse(payload: Record<string, unknown>, status = 200) {
+  return NextResponse.json(payload, {
+    status,
+    headers: {
+      "Cache-Control": "no-store"
+    }
+  });
+}
+
+async function getAdminFromRequest(request: Request) {
+  return getAdminSessionFromCookieHeader(request.headers.get("cookie"));
+}
+
+export async function GET(request: Request) {
+  const hasCookieHeader = Boolean(request.headers.get("cookie"));
+  const admin = await getAdminFromRequest(request);
 
   if (!admin) {
-    return NextResponse.json({ error: "Admin login required." }, { status: 401 });
+    return jsonResponse(
+      {
+        error: hasCookieHeader
+          ? "Admin session is invalid or expired. Sign out, sign in again at /admin/login, then retry."
+          : "Admin session cookie was not sent. Sign in at /admin/login on this same domain, then retry."
+      },
+      401
+    );
   }
 
   const tokenError = getBlobTokenError();
 
   if (tokenError) {
-    return NextResponse.json({ error: tokenError }, { status: 500 });
+    return jsonResponse({ error: tokenError }, 500);
   }
 
-  return NextResponse.json({ ready: true });
+  return jsonResponse({ ready: true, admin: admin.email });
 }
 
 export async function POST(request: Request) {
@@ -46,7 +70,7 @@ export async function POST(request: Request) {
       body,
       request,
       onBeforeGenerateToken: async () => {
-        const admin = await getAdminSession();
+        const admin = await getAdminFromRequest(request);
 
         if (!admin) {
           throw new Error("Admin login required.");
@@ -65,10 +89,10 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json(response);
+    return jsonResponse(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Upload failed.";
 
-    return NextResponse.json({ error: message }, { status: 400 });
+    return jsonResponse({ error: message }, 400);
   }
 }
