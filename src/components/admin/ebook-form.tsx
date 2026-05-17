@@ -40,7 +40,7 @@ export function EbookForm({ ebook, uploadAuthToken }: EbookFormProps) {
 
       if (coverFile) {
         setStatus("Uploading cover image...");
-        const coverBlob = await upload(`bookbridge/covers/${slug}-${getSafeFileName(coverFile.name)}`, coverFile, {
+        const coverBlob = await upload(`bookbridge/covers/${slug}${getFileExtension(coverFile.name)}`, coverFile, {
           access: "public",
           contentType: coverFile.type,
           handleUploadUrl: "/api/admin/blob-upload",
@@ -57,12 +57,11 @@ export function EbookForm({ ebook, uploadAuthToken }: EbookFormProps) {
         }
 
         setStatus("Uploading PDF to Vercel Blob...");
-        const ebookBlob = await upload(`bookbridge/ebooks/${slug}-${getSafeFileName(ebookFile.name)}`, ebookFile, {
+        const ebookBlob = await upload(`bookbridge/ebooks/${slug}.pdf`, ebookFile, {
           access: "public",
           contentType: "application/pdf",
           handleUploadUrl: "/api/admin/blob-upload",
           headers: getUploadHeaders(uploadAuthToken),
-          multipart: true,
           onUploadProgress: ({ percentage }) => {
             setStatus(`Uploading PDF to Vercel Blob... ${Math.round(percentage)}%`);
           }
@@ -272,12 +271,10 @@ function getUploadHeaders(uploadAuthToken: string) {
   };
 }
 
-function getSafeFileName(fileName: string) {
+function getFileExtension(fileName: string) {
   const dotIndex = fileName.lastIndexOf(".");
-  const baseName = dotIndex > -1 ? fileName.slice(0, dotIndex) : fileName;
-  const extension = dotIndex > -1 ? fileName.slice(dotIndex).toLowerCase() : "";
 
-  return `${slugify(baseName) || "file"}${extension}`;
+  return dotIndex > -1 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
 
 function Field({
