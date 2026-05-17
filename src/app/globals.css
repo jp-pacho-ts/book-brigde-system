@@ -54,3 +54,122 @@ select {
 .surface-line {
   background: linear-gradient(180deg, #f7f9fb 0%, #ffffff 52%, #f4f7f6 100%);
 }
+
+#bookbridge-startup-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(255 255 255 / 92%) 0%, rgb(247 249 251 / 98%) 44%),
+    #f7f9fb;
+  color: hsl(var(--foreground));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 450ms ease,
+    visibility 450ms ease;
+}
+
+html[data-site-loader="show"] #bookbridge-startup-loader,
+html[data-site-loader="leaving"] #bookbridge-startup-loader {
+  visibility: visible;
+}
+
+html[data-site-loader="show"] #bookbridge-startup-loader {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.startup-loader-mark {
+  position: relative;
+  width: 5rem;
+  height: 4rem;
+  border-radius: 0.9rem;
+  background: hsl(var(--primary));
+  box-shadow: 0 1.5rem 3rem rgb(15 23 42 / 16%);
+  overflow: hidden;
+}
+
+.startup-loader-page {
+  position: absolute;
+  top: 0.65rem;
+  bottom: 0.65rem;
+  width: 1.85rem;
+  border-radius: 0.35rem;
+  background: #ffffff;
+  transform-origin: center left;
+}
+
+.startup-loader-page-left {
+  left: 0.62rem;
+  transform: skewY(4deg);
+}
+
+.startup-loader-page-right {
+  right: 0.62rem;
+  transform: skewY(-4deg);
+  animation: startup-page-turn 1.15s ease-in-out infinite;
+}
+
+.startup-loader-copy {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+}
+
+.startup-loader-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.startup-loader-line {
+  width: min(11rem, 55vw);
+  height: 0.25rem;
+  border-radius: 999px;
+  background: hsl(var(--border));
+  overflow: hidden;
+}
+
+.startup-loader-line::after {
+  content: "";
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: #f2b84b;
+  animation: startup-loader-progress 1s ease-in-out infinite;
+}
+
+@keyframes startup-page-turn {
+  0%,
+  100% {
+    transform: skewY(-4deg) scaleX(1);
+  }
+
+  50% {
+    transform: skewY(-4deg) scaleX(0.78);
+  }
+}
+
+@keyframes startup-loader-progress {
+  0% {
+    transform: translateX(-105%);
+  }
+
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startup-loader-page-right,
+  .startup-loader-line::after {
+    animation: none;
+  }
+}

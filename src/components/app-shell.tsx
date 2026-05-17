@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { AuthProvider } from "@/components/auth-provider";
+import { SiteLoaderController } from "@/components/site-loader-controller";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -11,6 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthProvider>
+      <SiteLoaderController />
       {hideChrome ? null : <AppHeader />}
       <div className="flex flex-1 flex-col [&>main]:flex-1">{children}</div>
       {hideChrome ? null : (
