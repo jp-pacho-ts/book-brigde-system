@@ -1,26 +1,26 @@
 "use client";
 
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
-  CalendarDays,
-  CheckCircle2,
-  CircleDollarSign,
+  BookOpen,
+  Check,
   CreditCard,
+  Crown,
   LockKeyhole,
   Mail,
   MapPin,
-  ReceiptText,
+  RefreshCcw,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -29,6 +29,15 @@ const ACCEPTED_CARD_DIGITS = "4242424242424242";
 const ACCEPTED_EXPIRY = "12/34";
 const ACCEPTED_CVC = "123";
 const PAYMENT_REFERENCE = "BB-0424-8610";
+
+const PLAN_FEATURES = [
+  "Unlimited access to all premium ebooks",
+  "Instant activation after payment",
+  "All subject categories included",
+  "New titles added every month",
+  "Read on any device, anytime",
+  "Cancel anytime — no hidden fees",
+];
 
 export default function SubscribePage() {
   const router = useRouter();
@@ -42,7 +51,7 @@ export default function SubscribePage() {
   const [message, setMessage] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const cardLastFour = normalizeCardNumber(cardNumber).slice(-4) || "4242";
+  const cardLastFour = normalizeCardNumber(cardNumber).slice(-4) || "••••";
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,39 +61,32 @@ export default function SubscribePage() {
       setMessage("Please sign in before activating premium access.");
       return;
     }
-
     if (!cardholderName.trim()) {
       setMessage("Enter the cardholder name before confirming.");
       return;
     }
-
     if (normalizeCardNumber(cardNumber) !== ACCEPTED_CARD_DIGITS) {
-      setMessage("Use the accepted card number to activate the membership.");
+      setMessage("Use the accepted test card number to activate the membership.");
       return;
     }
-
     if (!isFutureExpiry(expiry)) {
       setMessage("Enter a future expiry date in MM/YY format.");
       return;
     }
-
     if (!cvc.match(/^\d{3,4}$/)) {
       setMessage("Enter a 3 or 4 digit CVC.");
       return;
     }
-
     if (!billingCountry.trim()) {
       setMessage("Select a billing country before confirming.");
       return;
     }
-
     if (!billingZip.trim()) {
       setMessage("Enter a billing ZIP or postal code before confirming.");
       return;
     }
 
     setIsProcessing(true);
-
     window.setTimeout(() => {
       activateSubscription();
       router.push("/account");
@@ -102,296 +104,393 @@ export default function SubscribePage() {
   }
 
   return (
-    <main className="surface-line">
-      <section className="border-b bg-background">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:py-14">
-          <div>
-            <Badge variant="secondary" className="gap-2 rounded-full px-3 py-1">
-              <Sparkles size={14} aria-hidden="true" />
-              Premium membership
-            </Badge>
-            <h1 className="mt-5 text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
-              Premium membership checkout.
-            </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-              Enter your card and billing details to start premium access. Your membership
-              unlocks the full BookBridge library immediately after approval.
-            </p>
+    <main>
+      {/* ══════════════════════════════════════
+          PLAN HERO
+      ══════════════════════════════════════ */}
+      <section
+        className="relative overflow-hidden py-20 text-white"
+        style={{ background: "linear-gradient(135deg, #0d3d35 0%, #1f7a6d 50%, #155f55 100%)" }}
+      >
+        {/* Dot grid texture */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
 
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              <Benefit
-                icon={<ShieldCheck size={22} aria-hidden="true" />}
-                title="Secure checkout"
-                description="Card, billing, and order details are reviewed before approval."
-              />
-              <Benefit
-                icon={<LockKeyhole size={22} aria-hidden="true" />}
-                title="Instant access"
-                description="Premium titles unlock as soon as the membership is active."
-              />
+        <div className="relative mx-auto max-w-7xl px-6">
+          <div className="grid items-center gap-14 lg:grid-cols-2">
+
+            {/* ── Left: Plan info ── */}
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur-sm">
+                <Crown size={14} />
+                Premium Membership
+              </div>
+
+              <h1 className="mt-6 text-5xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl">
+                One plan,<br />full access.
+              </h1>
+              <p className="mt-4 max-w-md text-lg leading-relaxed text-white/65">
+                Get unlimited access to our entire library of curated ebooks. No limits, no waiting.
+              </p>
+
+              {/* Price */}
+              <div className="mt-8 flex items-end gap-2">
+                <span className="text-6xl font-extrabold leading-none">PHP 99</span>
+                <span className="mb-1 text-lg font-medium text-white/55">/ month</span>
+              </div>
+
+              {/* Features list */}
+              <ul className="mt-8 space-y-3">
+                {PLAN_FEATURES.map((f) => (
+                  <li key={f} className="flex items-center gap-3 text-sm font-medium text-white/80">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/20">
+                      <Check size={11} strokeWidth={3} />
+                    </span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── Right: Credit card preview ── */}
+            <div className="flex justify-center lg:justify-end">
+              <div
+                className="relative w-full max-w-[380px] overflow-hidden rounded-3xl p-7 shadow-2xl"
+                style={{
+                  background: "linear-gradient(135deg, #17202a 0%, #1a2d40 60%, #0f1f2e 100%)",
+                  aspectRatio: "1.586 / 1",
+                }}
+              >
+                {/* Decorative circles */}
+                <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/[0.04]" />
+                <div className="absolute -bottom-14 -right-6 h-56 w-56 rounded-full bg-white/[0.04]" />
+
+                {/* Top row: chip + network */}
+                <div className="relative flex items-start justify-between">
+                  <div
+                    className="h-9 w-12 rounded-md"
+                    style={{ background: "linear-gradient(135deg, #f6c752, #d4941a)" }}
+                  />
+                  <span className="font-mono text-sm font-bold tracking-widest text-white/30">
+                    VISA
+                  </span>
+                </div>
+
+                {/* Card number */}
+                <p className="relative mt-7 font-mono text-2xl font-semibold tracking-[0.18em] text-white">
+                  •••• •••• •••• {cardLastFour}
+                </p>
+
+                {/* Card footer */}
+                <div className="relative mt-5 flex items-end justify-between">
+                  <p className="max-w-[180px] truncate text-sm font-semibold text-white">
+                    {cardholderName || "FULL NAME"}
+                  </p>
+                  <p className="text-sm font-semibold text-white">{expiry || "MM/YY"}</p>
+                </div>
+              </div>
             </div>
           </div>
-
-          <Card className="bg-foreground p-5 text-background shadow-soft">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-normal text-background/60">
-                  Secure checkout
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold">BookBridge Premium</h2>
-              </div>
-              <span className="grid h-14 w-14 place-items-center rounded-lg bg-background/10">
-                <CreditCard size={26} aria-hidden="true" />
-              </span>
-            </div>
-
-            <div className="mt-6 rounded-lg border border-background/10 bg-background/10 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-background/70">Visa card</p>
-                <Badge variant="secondary" className="shrink-0">
-                  Secure
-                </Badge>
-              </div>
-              <p className="mt-5 font-mono text-2xl font-semibold tracking-normal text-background">
-                **** **** **** {cardLastFour}
-              </p>
-              <div className="mt-5 flex items-center justify-between gap-4 text-sm text-background/65">
-                <span className="truncate">{cardholderName || "Cardholder"}</span>
-                <span>{expiry || "MM/YY"}</span>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <DetailField label="Status" value="Ready" />
-              <DetailField label="Due today" value="PHP 99" />
-              <DetailField label="Reference" value={PAYMENT_REFERENCE} />
-            </div>
-          </Card>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-10 lg:grid-cols-[0.78fr_1.22fr]">
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-normal text-muted-foreground">
-                  Order summary
+      {/* ══════════════════════════════════════
+          CHECKOUT
+      ══════════════════════════════════════ */}
+      <section className="bg-paper py-14">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid gap-8 lg:grid-cols-[1fr_1.55fr]">
+
+            {/* ── Order summary ── */}
+            <div className="space-y-4">
+              <Card className="overflow-hidden rounded-2xl">
+                {/* Dark card header */}
+                <div
+                  className="p-6 text-white"
+                  style={{ background: "linear-gradient(135deg, #17202a, #1e2d3d)" }}
+                >
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/40">
+                    Order Summary
+                  </p>
+                  <p className="mt-1.5 text-2xl font-extrabold">BookBridge Premium</p>
+                  <p className="mt-1 text-sm text-white/55">
+                    Monthly membership · Billed every 30 days
+                  </p>
+
+                  {/* Price in summary */}
+                  <div className="mt-5 flex items-end gap-1.5">
+                    <span className="text-4xl font-extrabold">PHP 99</span>
+                    <span className="mb-0.5 text-sm text-white/50">/ mo</span>
+                  </div>
+                </div>
+
+                <CardContent className="p-5">
+                  {/* Line items */}
+                  <div className="space-y-2.5 border-b pb-4">
+                    <SummaryRow label="Premium membership" value="PHP 99.00" />
+                    <SummaryRow label="Tax (VAT)" value="PHP 0.00" />
+                  </div>
+                  <div className="pt-4">
+                    <SummaryRow label="Total due today" value="PHP 99.00" strong />
+                  </div>
+
+                  {/* Trust notes */}
+                  <div className="mt-5 space-y-2.5 rounded-xl bg-muted/60 p-4">
+                    <TrustNote icon={<ShieldCheck size={15} />} text="256-bit SSL encrypted" />
+                    <TrustNote icon={<RefreshCcw size={15} />} text="Renews monthly, cancel anytime" />
+                    <TrustNote icon={<Zap size={15} />} text="Instant access after payment" />
+                    <TrustNote icon={<BookOpen size={15} />} text="All premium titles unlocked" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Reference number */}
+              <div className="rounded-xl border bg-white px-4 py-3 text-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Payment Reference
                 </p>
-                <h2 className="mt-2 text-3xl font-semibold text-foreground">Premium Plan</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Monthly access for premium ebooks in the library.
+                <p className="mt-1 font-mono text-base font-bold text-foreground">
+                  {PAYMENT_REFERENCE}
                 </p>
               </div>
-              <ReceiptText className="text-primary" size={28} aria-hidden="true" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="border-y py-5">
-              <p className="text-5xl font-semibold text-foreground">PHP 99</p>
-              <p className="mt-1 text-sm font-medium uppercase tracking-normal text-muted-foreground">
-                monthly price
-              </p>
             </div>
 
-            <div className="mt-5 space-y-3 border-b pb-5">
-              <SummaryRow label="Premium membership" value="PHP 99.00" />
-              <SummaryRow label="Tax" value="PHP 0.00" />
-              <SummaryRow label="Total due today" value="PHP 99.00" strong />
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <TrustNote icon={<CircleDollarSign size={18} aria-hidden="true" />} text="Secure payment review." />
-              <TrustNote icon={<CalendarDays size={18} aria-hidden="true" />} text="Membership renews monthly." />
-              <TrustNote icon={<CheckCircle2 size={18} aria-hidden="true" />} text="Premium ebooks unlock after approval." />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-soft">
-          {isSubscribed ? (
-            <CardContent className="p-6">
-              <div className="rounded-lg bg-primary/10 p-6">
-                <BadgeCheck className="text-primary" size={28} aria-hidden="true" />
-                <h2 className="mt-3 text-2xl font-semibold text-foreground">Premium is active</h2>
-                <p className="mt-2 text-muted-foreground">You can already open premium ebooks.</p>
-                <Link href="/" className="mt-5 inline-flex">
-                  <Button>Back to library</Button>
-                </Link>
-              </div>
-            </CardContent>
-          ) : (
-            <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-foreground">Payment details</h2>
-                    <p className="text-sm text-muted-foreground">Card payment</p>
+            {/* ── Payment form ── */}
+            <Card className="rounded-2xl shadow-soft">
+              {isSubscribed ? (
+                /* Already subscribed state */
+                <CardContent className="flex flex-col items-center p-10 text-center">
+                  <div className="grid h-20 w-20 place-items-center rounded-3xl bg-primary/10">
+                    <BadgeCheck className="text-primary" size={40} />
                   </div>
-                  <Badge variant="outline" className="w-fit gap-2">
-                    <LockKeyhole size={14} aria-hidden="true" />
-                    Secure
-                  </Badge>
-                </div>
-
-                {!user ? (
-                  <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-                    Sign in first before activating premium access.{" "}
-                    <Link href="/login" className="font-medium text-primary hover:underline">
-                      Go to sign in
-                    </Link>
+                  <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
+                    <Sparkles size={13} />
+                    Premium Active
                   </div>
-                ) : null}
+                  <h2 className="mt-4 text-2xl font-extrabold text-foreground">
+                    You&apos;re already Premium!
+                  </h2>
+                  <p className="mt-2 max-w-xs text-muted-foreground">
+                    You have full access to all premium ebooks in the BookBridge library.
+                  </p>
+                  <Link href="/" className="mt-8">
+                    <Button size="lg" className="h-12 gap-2 px-8 font-bold">
+                      <BookOpen size={18} />
+                      Go to Library
+                    </Button>
+                  </Link>
+                </CardContent>
+              ) : (
+                /* Payment form */
+                <CardContent className="p-6 sm:p-8">
+                  <form onSubmit={handleSubmit} className="space-y-7">
+                    {/* Form header */}
+                    <div className="flex items-center justify-between border-b pb-5">
+                      <div>
+                        <h2 className="text-xl font-extrabold text-foreground">Payment Details</h2>
+                        <p className="mt-0.5 text-sm text-muted-foreground">Secure card payment</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground">
+                        <LockKeyhole size={11} />
+                        Secure
+                      </div>
+                    </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="cardholder-name">Cardholder name</Label>
-                    <Input
-                      id="cardholder-name"
-                      name="cardholder-name"
-                      value={cardholderName}
-                      onChange={(event) => setCardholderName(event.target.value)}
-                      className="mt-2 h-11"
-                      autoComplete="off"
-                      required
-                    />
-                  </div>
+                    {/* Sign-in warning */}
+                    {!user && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <p className="text-sm font-bold text-amber-800">Sign in required</p>
+                        <p className="mt-1 text-sm text-amber-700">
+                          Please{" "}
+                          <Link
+                            href="/login"
+                            className="font-bold underline underline-offset-2 hover:text-amber-900"
+                          >
+                            sign in
+                          </Link>{" "}
+                          before activating premium access.
+                        </p>
+                      </div>
+                    )}
 
-                  <div className="sm:col-span-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label htmlFor="card-number">Card number</Label>
-                      <button
-                        type="button"
-                        onClick={resetCardDetails}
-                        className="text-xs font-medium text-primary hover:underline"
+                    {/* Card info section */}
+                    <div className="space-y-4">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        Card Information
+                      </p>
+
+                      <div>
+                        <Label htmlFor="cardholder-name">Cardholder Name</Label>
+                        <Input
+                          id="cardholder-name"
+                          value={cardholderName}
+                          onChange={(e) => setCardholderName(e.target.value)}
+                          className="mt-2 h-11"
+                          placeholder="Full name on card"
+                          autoComplete="off"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="card-number">Card Number</Label>
+                          <button
+                            type="button"
+                            onClick={resetCardDetails}
+                            className="text-xs font-bold text-primary hover:underline"
+                          >
+                            Use test card
+                          </button>
+                        </div>
+                        <div className="relative mt-2">
+                          <CreditCard
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            size={16}
+                          />
+                          <Input
+                            id="card-number"
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                            className="h-11 pl-10 font-mono tracking-widest"
+                            inputMode="numeric"
+                            placeholder="1234 5678 9012 3456"
+                            autoComplete="off"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="card-expiry">Expiry Date</Label>
+                          <Input
+                            id="card-expiry"
+                            value={expiry}
+                            onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                            className="mt-2 h-11"
+                            inputMode="numeric"
+                            placeholder="MM/YY"
+                            autoComplete="off"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="card-cvc">CVC</Label>
+                          <Input
+                            id="card-cvc"
+                            value={cvc}
+                            onChange={(e) =>
+                              setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
+                            }
+                            className="mt-2 h-11"
+                            inputMode="numeric"
+                            placeholder="123"
+                            autoComplete="off"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Billing info section */}
+                    <div className="space-y-4 border-t pt-6">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        Billing Information
+                      </p>
+
+                      <div>
+                        <Label htmlFor="billing-email">Billing Email</Label>
+                        <div className="relative mt-2">
+                          <Mail
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            size={16}
+                          />
+                          <Input
+                            id="billing-email"
+                            value={user?.email ?? "Sign in required"}
+                            className="h-11 bg-muted/50 pl-10"
+                            disabled
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="billing-country">Country</Label>
+                          <div className="relative mt-2">
+                            <MapPin
+                              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                              size={16}
+                            />
+                            <select
+                              id="billing-country"
+                              value={billingCountry}
+                              onChange={(e) => setBillingCountry(e.target.value)}
+                              className="flex h-11 w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            >
+                              <option>Philippines</option>
+                              <option>United States</option>
+                              <option>Singapore</option>
+                              <option>Japan</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="billing-zip">ZIP / Postal Code</Label>
+                          <Input
+                            id="billing-zip"
+                            value={billingZip}
+                            onChange={(e) => setBillingZip(e.target.value.slice(0, 12))}
+                            className="mt-2 h-11"
+                            autoComplete="off"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Error */}
+                    {message && (
+                      <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                        {message}
+                      </div>
+                    )}
+
+                    {/* Submit */}
+                    <div className="space-y-3 border-t pt-6">
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="h-12 w-full gap-2 text-base font-bold"
+                        disabled={isProcessing}
                       >
-                        Reset card
-                      </button>
-                    </div>
-                    <Input
-                      id="card-number"
-                      name="card-number"
-                      value={cardNumber}
-                      onChange={(event) => setCardNumber(formatCardNumber(event.target.value))}
-                      className="mt-2 h-11 font-mono tracking-normal"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="card-expiry">Expiry</Label>
-                    <Input
-                      id="card-expiry"
-                      name="card-expiry"
-                      value={expiry}
-                      onChange={(event) => setExpiry(formatExpiry(event.target.value))}
-                      className="mt-2 h-11"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="card-cvc">CVC</Label>
-                    <Input
-                      id="card-cvc"
-                      name="card-cvc"
-                      value={cvc}
-                      onChange={(event) => setCvc(event.target.value.replace(/\D/g, "").slice(0, 4))}
-                      className="mt-2 h-11"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 border-t pt-5 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="billing-email">Billing email</Label>
-                    <div className="relative mt-2">
-                      <Mail
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                        size={16}
-                        aria-hidden="true"
-                      />
-                      <Input
-                        id="billing-email"
-                        value={user?.email ?? "Sign in required"}
-                        className="h-11 pl-9"
-                        disabled
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="billing-country">Country</Label>
-                    <div className="relative mt-2">
-                      <MapPin
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                        size={16}
-                        aria-hidden="true"
-                      />
-                      <select
-                        id="billing-country"
-                        value={billingCountry}
-                        onChange={(event) => setBillingCountry(event.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-9 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <option>Philippines</option>
-                        <option>United States</option>
-                        <option>Singapore</option>
-                        <option>Japan</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="billing-zip">ZIP / postal code</Label>
-                    <Input
-                      id="billing-zip"
-                      value={billingZip}
-                      onChange={(event) => setBillingZip(event.target.value.slice(0, 12))}
-                      className="mt-2 h-11"
-                      autoComplete="off"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <div className="flex items-start gap-3">
-                    <ShieldCheck className="mt-0.5 shrink-0 text-primary" size={18} aria-hidden="true" />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Secure membership activation</p>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        After approval, your premium access is applied to this account and premium
-                        ebooks are available from the library.
+                        <LockKeyhole size={18} />
+                        {isProcessing
+                          ? "Processing payment…"
+                          : "Subscribe — PHP 99 / month"}
+                      </Button>
+                      <p className="text-center text-xs text-muted-foreground">
+                        By subscribing you agree to our terms. Cancel anytime from your account.
                       </p>
                     </div>
-                  </div>
-                </div>
-
-                {message ? (
-                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-                    {message}
-                  </p>
-                ) : null}
-
-                <Button type="submit" className="h-11 w-full" disabled={isProcessing}>
-                  <LockKeyhole size={18} aria-hidden="true" />
-                  {isProcessing ? "Authorizing payment..." : "Subscribe now"}
-                </Button>
-              </form>
-            </CardContent>
-          )}
-        </Card>
+                  </form>
+                </CardContent>
+              )}
+            </Card>
+          </div>
+        </div>
       </section>
     </main>
   );
 }
+
+/* ── Helpers ───────────────────────────────────────────────────────────── */
 
 function normalizeCardNumber(value: string) {
   return value.replace(/\D/g, "");
@@ -405,11 +504,7 @@ function formatCardNumber(value: string) {
 
 function formatExpiry(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 4);
-
-  if (digits.length <= 2) {
-    return digits;
-  }
-
+  if (digits.length <= 2) return digits;
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
@@ -417,59 +512,41 @@ function isFutureExpiry(value: string) {
   const [monthValue, yearValue] = value.split("/");
   const month = Number(monthValue);
   const year = Number(yearValue);
-
   if (!monthValue || !yearValue || month < 1 || month > 12 || yearValue.length !== 2) {
     return false;
   }
-
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1;
-  const currentYear = currentDate.getFullYear() % 100;
-
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear() % 100;
   return year > currentYear || (year === currentYear && month >= currentMonth);
 }
 
-function SummaryRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-4 text-sm">
-      <span className={strong ? "font-semibold text-foreground" : "text-muted-foreground"}>{label}</span>
-      <span className={strong ? "font-semibold text-foreground" : "font-medium text-foreground"}>{value}</span>
-    </div>
-  );
-}
-
-function TrustNote({ icon, text }: { icon: ReactNode; text: string }) {
-  return (
-    <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
-      <span className="text-primary">{icon}</span>
-      {text}
-    </div>
-  );
-}
-
-function Benefit({
-  icon,
-  title,
-  description
+function SummaryRow({
+  label,
+  value,
+  strong = false,
 }: {
-  icon: ReactNode;
-  title: string;
-  description: string;
+  label: string;
+  value: string;
+  strong?: boolean;
 }) {
   return (
-    <Card className="p-4">
-      <div className="text-primary">{icon}</div>
-      <p className="mt-3 text-sm font-semibold text-foreground">{title}</p>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
-    </Card>
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <span className={strong ? "font-bold text-foreground" : "text-muted-foreground"}>
+        {label}
+      </span>
+      <span className={strong ? "font-bold text-foreground" : "font-medium text-foreground"}>
+        {value}
+      </span>
+    </div>
   );
 }
 
-function DetailField({ label, value }: { label: string; value: string }) {
+function TrustNote({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="rounded-lg border border-background/10 bg-background/10 p-4">
-      <p className="text-xs font-medium uppercase tracking-normal text-background/55">{label}</p>
-      <p className="mt-2 break-words text-lg font-semibold text-background">{value}</p>
+    <div className="flex items-center gap-2.5 text-sm font-medium text-muted-foreground">
+      <span className="text-primary">{icon}</span>
+      {text}
     </div>
   );
 }

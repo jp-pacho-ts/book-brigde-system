@@ -19,14 +19,6 @@ export function EbookCover({ ebook, compact = false }: { ebook: Ebook; compact?:
           alt={`${ebook.title} ebook cover`}
           className="h-full w-full object-cover"
         />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-4 text-white">
-          <p className={`${compact ? "text-[10px]" : "text-xs"} font-black uppercase tracking-normal opacity-80`}>
-            {ebook.category}
-          </p>
-          <h3 className={`${compact ? "text-lg" : "text-2xl"} mt-1 font-black leading-tight`}>
-            {ebook.title}
-          </h3>
-        </div>
       </div>
     );
   }
@@ -42,15 +34,6 @@ export function EbookCover({ ebook, compact = false }: { ebook: Ebook; compact?:
       <div className="absolute bottom-5 right-5 h-24 w-24 rounded-lg border border-white/25 bg-white/10" />
       <div className="absolute right-8 top-8 grid h-11 w-11 place-items-center rounded-lg bg-white/15 backdrop-blur">
         <BookOpen size={compact ? 18 : 22} aria-hidden="true" />
-      </div>
-      <div className="absolute bottom-5 left-12 right-5">
-        <p className={`${compact ? "text-[10px]" : "text-xs"} font-black uppercase tracking-normal opacity-75`}>
-          {ebook.category}
-        </p>
-        <h3 className={`${compact ? "text-lg" : "text-3xl"} mt-2 font-black leading-tight`}>
-          {ebook.title}
-        </h3>
-        <p className={`${compact ? "mt-2" : "mt-3"} text-xs font-bold opacity-75`}>{ebook.author}</p>
       </div>
     </div>
   );

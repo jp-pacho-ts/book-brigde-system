@@ -5,216 +5,680 @@ import {
   ArrowRight,
   BadgeCheck,
   BookMarked,
+  BookOpen,
   BookText,
   ChevronLeft,
   ChevronRight,
   Crown,
-  Library,
+  GraduationCap,
+  Layers,
   LockKeyhole,
   Search,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import { EbookCover } from "@/components/ebook-cover";
 import { useAuth } from "@/components/auth-provider";
 import type { Ebook } from "@/lib/ebooks";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const EBOOKS_PER_PAGE = 6;
+const EBOOKS_PER_PAGE = 9;
+const PER_VIEW = 4;
+
+const HERO_SLIDES = [
+  {
+    id: 0,
+    eyebrow: "BookBridge Digital Library",
+    title: "Your Gateway to Knowledge",
+    subtitle:
+      "Access thousands of curated ebooks across business, technology, finance, and academic disciplines.",
+    primary: { label: "Explore Free Books", href: "#catalog" },
+    secondary: { label: "View Plans", href: "/subscribe" },
+  },
+  {
+    id: 1,
+    eyebrow: "Premium Membership",
+    title: "Unlimited Reading, One Subscription",
+    subtitle:
+      "Get instant access to our entire premium library with one simple subscription. Cancel anytime.",
+    primary: { label: "Start Premium", href: "/subscribe" },
+    secondary: { label: "Browse Catalog", href: "#catalog" },
+  },
+  {
+    id: 2,
+    eyebrow: "Curated for Learners",
+    title: "Handpicked for Academic Excellence",
+    subtitle:
+      "Expert-selected titles to help students and professionals reach their full potential.",
+    primary: { label: "Browse Catalog", href: "#catalog" },
+    secondary: { label: "View Plans", href: "/subscribe" },
+  },
+] as const;
+
+const BOOK_POSITIONS = [
+  { top: "12%", left: "8%", rotate: "-10deg", z: 2, scale: 0.85 },
+  { top: "5%", left: "32%", rotate: "-3deg", z: 4, scale: 1 },
+  { top: "18%", left: "58%", rotate: "7deg", z: 3, scale: 0.9 },
+  { top: "48%", left: "18%", rotate: "4deg", z: 2, scale: 0.8 },
+  { top: "44%", left: "50%", rotate: "-8deg", z: 3, scale: 0.95 },
+];
 
 export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categories: string[] }) {
   const { isSubscribed } = useAuth();
+
+  /* ── catalog state ── */
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState("All");
   const [page, setPage] = useState(1);
 
-  const filteredEbooks = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+  /* ── hero carousel state ── */
+  const [heroSlide, setHeroSlide] = useState(0);
+  const heroIntervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
+  /* ── featured carousel state ── */
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [carouselPage, setCarouselPage] = useState(0);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(true);
+  const totalCarouselPages = Math.ceil(ebooks.length / PER_VIEW);
+
+  /* ── catalog filtering ── */
+  const filteredEbooks = useMemo(() => {
+    const q = query.trim().toLowerCase();
     return ebooks.filter((ebook) => {
-      const matchesCategory = category === "All" || ebook.category === category;
+      const matchesCategory = activeCategory === "All" || ebook.category === activeCategory;
       const matchesSearch =
-        !normalizedQuery ||
+        !q ||
         [ebook.title, ebook.author, ebook.category, ebook.description]
           .join(" ")
           .toLowerCase()
-          .includes(normalizedQuery);
-
+          .includes(q);
       return matchesCategory && matchesSearch;
     });
-  }, [category, ebooks, query]);
+  }, [activeCategory, ebooks, query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEbooks.length / EBOOKS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
-  const pageStartIndex = (currentPage - 1) * EBOOKS_PER_PAGE;
-  const paginatedEbooks = filteredEbooks.slice(pageStartIndex, pageStartIndex + EBOOKS_PER_PAGE);
-  const visibleStart = filteredEbooks.length === 0 ? 0 : pageStartIndex + 1;
-  const visibleEnd = Math.min(pageStartIndex + EBOOKS_PER_PAGE, filteredEbooks.length);
+  const pageStart = (currentPage - 1) * EBOOKS_PER_PAGE;
+  const paginatedEbooks = filteredEbooks.slice(pageStart, pageStart + EBOOKS_PER_PAGE);
+  const visibleStart = filteredEbooks.length === 0 ? 0 : pageStart + 1;
+  const visibleEnd = Math.min(pageStart + EBOOKS_PER_PAGE, filteredEbooks.length);
+
+  useEffect(() => { setPage(1); }, [activeCategory, query]);
+  useEffect(() => { setPage((p) => Math.min(p, totalPages)); }, [totalPages]);
+
+  /* ── hero auto-advance ── */
+  const startHeroTimer = useCallback(() => {
+    clearInterval(heroIntervalRef.current);
+    heroIntervalRef.current = setInterval(() => {
+      setHeroSlide((s) => (s + 1) % HERO_SLIDES.length);
+    }, 5000);
+  }, []);
 
   useEffect(() => {
-    setPage(1);
-  }, [category, query]);
+    startHeroTimer();
+    return () => clearInterval(heroIntervalRef.current);
+  }, [startHeroTimer]);
+
+  const goToSlide = (index: number) => {
+    setHeroSlide(index);
+    startHeroTimer();
+  };
+
+  /* ── featured carousel scroll tracking ── */
+  const syncCarouselState = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 4);
+    setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+    setCarouselPage(Math.round(el.scrollLeft / el.clientWidth));
+  }, []);
 
   useEffect(() => {
-    setPage((currentPage) => Math.min(currentPage, totalPages));
-  }, [totalPages]);
+    const el = carouselRef.current;
+    if (!el) return;
+    syncCarouselState();
+    el.addEventListener("scroll", syncCarouselState, { passive: true });
+    return () => el.removeEventListener("scroll", syncCarouselState);
+  }, [syncCarouselState, ebooks.length]);
+
+  const scrollCarousel = (dir: "prev" | "next") => {
+    const el = carouselRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "next" ? el.clientWidth : -el.clientWidth, behavior: "smooth" });
+  };
+
+  const goToCarouselPage = (p: number) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    el.scrollTo({ left: p * el.clientWidth, behavior: "smooth" });
+  };
+
+  const slide = HERO_SLIDES[heroSlide];
+  const premiumCount = ebooks.filter((e) => e.isPremium).length;
 
   return (
-    <main className="surface-line">
-      <section className="border-b bg-background">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 lg:grid-cols-[1fr_0.95fr] lg:items-center lg:py-12">
-          <div className="max-w-3xl">
-            <Badge variant="secondary" className="gap-2 rounded-full px-3 py-1">
-              <Sparkles size={14} aria-hidden="true" />
-              BookBridge Library
-            </Badge>
-            <h1 className="mt-5 text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
-              Find the right ebook faster.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Search a curated shelf of study, business, finance, and research titles. Upgrade when
-              you want full access to premium reading.
+    <main>
+      {/* ════════════ HERO ════════════ */}
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-ink text-white">
+        {/* Background gradients */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-ink via-[#101c28] to-[#0d3530]" />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(ellipse 70% 70% at 65% 45%, rgba(31,122,109,0.25) 0%, transparent 70%)" }}
+        />
+        {/* Subtle dot grid overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "28px 28px" }}
+        />
+
+        {/* Floating book display — right 50% desktop only */}
+        {ebooks.length >= 3 && (
+          <div className="absolute inset-y-0 right-0 hidden w-[52%] lg:block" style={{ zIndex: 1 }}>
+            {ebooks.slice(0, 5).map((ebook, i) => {
+              const pos = BOOK_POSITIONS[i];
+              if (!pos) return null;
+              return (
+                <div
+                  key={ebook.id}
+                  className="absolute overflow-hidden"
+                  style={{
+                    top: pos.top,
+                    left: pos.left,
+                    width: `${Math.round(148 * pos.scale)}px`,
+                    zIndex: pos.z,
+                    transform: `rotate(${pos.rotate})`,
+                    borderRadius: 10,
+                    boxShadow: "0 24px 60px rgba(0,0,0,0.65), 0 6px 16px rgba(0,0,0,0.35)",
+                  }}
+                >
+                  <EbookCover ebook={ebook} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Fade books into text area — only fade the left 40% of the book zone */}
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] lg:block"
+          style={{ zIndex: 2, background: "linear-gradient(to left, transparent 30%, rgba(17,28,40,0.4) 60%, #17202a 82%)" }}
+        />
+
+        {/* Content */}
+        <div className="relative mx-auto w-full max-w-7xl px-6 py-28 lg:py-0" style={{ zIndex: 3 }}>
+          <div className="max-w-[610px]">
+            {/* Eyebrow */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-sm">
+              <Sparkles size={14} />
+              {slide.eyebrow}
+            </div>
+
+            {/* Animated title + subtitle — key triggers re-animation */}
+            <div key={heroSlide} className="hero-slide-in mt-7">
+              <h1 className="text-5xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl">
+                {slide.title}
+              </h1>
+              <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/65 sm:text-xl">
+                {slide.subtitle}
+              </p>
+            </div>
+
+            {/* CTAs */}
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href={slide.primary.href}>
+                <Button
+                  size="lg"
+                  className="h-12 gap-2 bg-palm px-7 text-base font-semibold text-white hover:bg-palm/90"
+                  style={{ boxShadow: "0 8px 32px rgba(31,122,109,0.45)" }}
+                >
+                  {slide.primary.label}
+                  <ArrowRight size={18} />
+                </Button>
+              </Link>
+              <Link href={slide.secondary.href}>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 gap-2 border-white/25 bg-transparent px-7 text-base text-white hover:bg-white/10"
+                >
+                  {slide.secondary.label}
+                </Button>
+              </Link>
+            </div>
+
+            {/* Slide dots */}
+            <div className="mt-12 flex items-center gap-2.5">
+              {HERO_SLIDES.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => goToSlide(i)}
+                  aria-label={`Slide ${i + 1}`}
+                  aria-current={i === heroSlide ? "true" : undefined}
+                  className={cn(
+                    "rounded-full transition-all duration-300",
+                    i === heroSlide
+                      ? "w-8 h-2.5 bg-palm"
+                      : "w-2.5 h-2.5 bg-white/25 hover:bg-white/50"
+                  )}
+                />
+              ))}
+              <span className="ml-2 text-xs font-medium tabular-nums text-white/35">
+                {heroSlide + 1} / {HERO_SLIDES.length}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Scroll hint */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-white/30" style={{ zIndex: 3 }}>
+          <span className="text-xs font-medium tracking-widest uppercase">Scroll</span>
+          <div className="h-8 w-px bg-gradient-to-b from-white/30 to-transparent" />
+        </div>
+      </section>
+
+      {/* ════════════ STATS BAR ════════════ */}
+      <section className="border-b bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-8">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <StatPill icon={BookOpen} label="Total Ebooks" value={`${ebooks.length}+`} />
+            <StatPill icon={Layers} label="Categories" value={`${Math.max(0, categories.length - 1)}`} />
+            <StatPill icon={Crown} label="Premium Titles" value={`${premiumCount}+`} />
+            <StatPill icon={GraduationCap} label="Happy Readers" value="10K+" />
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════ FEATURED CAROUSEL ════════════ */}
+      {ebooks.length > 0 && (
+        <section className="overflow-hidden bg-paper py-16">
+          <div className="mx-auto max-w-7xl px-6">
+            {/* Section heading + arrows */}
+            <div className="mb-10 flex items-end justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-palm">Featured Reads</p>
+                <h2 className="mt-1.5 text-3xl font-extrabold text-foreground sm:text-4xl">
+                  Popular Right Now
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={!canPrev}
+                  onClick={() => scrollCarousel("prev")}
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white shadow-sm transition-all duration-200",
+                    canPrev
+                      ? "hover:border-primary hover:bg-primary hover:text-white"
+                      : "cursor-not-allowed opacity-35"
+                  )}
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  type="button"
+                  disabled={!canNext}
+                  onClick={() => scrollCarousel("next")}
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white shadow-sm transition-all duration-200",
+                    canNext
+                      ? "hover:border-primary hover:bg-primary hover:text-white"
+                      : "cursor-not-allowed opacity-35"
+                  )}
+                  aria-label="Next"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Track — snap on every 4th item (page boundary) */}
+            <div
+              ref={carouselRef}
+              className="flex gap-6 overflow-x-scroll scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {ebooks.map((ebook, i) => (
+                <div
+                  key={ebook.id}
+                  className={cn(i % PER_VIEW === 0 ? "snap-start" : "")}
+                  style={{ flexShrink: 0, width: "calc(25% - 18px)" }}
+                >
+                  <FeaturedCard ebook={ebook} isSubscribed={isSubscribed} />
+                </div>
+              ))}
+            </div>
+
+            {/* Page dots */}
+            {totalCarouselPages > 1 && (
+              <div className="mt-8 flex justify-center gap-2">
+                {Array.from({ length: totalCarouselPages }, (_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => goToCarouselPage(i)}
+                    aria-label={`Page ${i + 1}`}
+                    aria-current={i === carouselPage ? "true" : undefined}
+                    className={cn(
+                      "rounded-full transition-all duration-300",
+                      i === carouselPage
+                        ? "w-7 h-2.5 bg-primary"
+                        : "w-2.5 h-2.5 bg-border hover:bg-muted-foreground"
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ════════════ FULL CATALOG ════════════ */}
+      <section id="catalog" className="bg-white py-16">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-palm">Full Catalog</p>
+              <h2 className="mt-1.5 text-3xl font-extrabold text-foreground sm:text-4xl">
+                Browse All Ebooks
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Showing {visibleStart}–{visibleEnd} of {filteredEbooks.length} titles
+            </p>
+          </div>
+
+          {/* Search + filter bar */}
+          <div className="mb-6 rounded-2xl border bg-paper p-4 shadow-sm">
+            <div className="grid gap-4 lg:grid-cols-[minmax(18rem,0.85fr)_1fr] lg:items-start">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  size={20}
+                />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by title, author, or topic…"
+                  className="h-12 bg-white pl-12 text-base shadow-none"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                {categories.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setActiveCategory(item)}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-sm font-medium transition",
+                      activeCategory === item
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                        : "border-border bg-white text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid */}
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {paginatedEbooks.map((ebook) => (
+              <EbookCard key={ebook.id} ebook={ebook} isSubscribed={isSubscribed} />
+            ))}
+          </div>
+
+          {filteredEbooks.length === 0 && (
+            <Card className="mt-10 p-10 text-center">
+              <BookText className="mx-auto text-muted-foreground" size={44} />
+              <p className="mt-3 text-xl font-semibold">No ebooks found</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Try a different keyword or category.
+              </p>
+            </Card>
+          )}
+
+          {filteredEbooks.length > EBOOKS_PER_PAGE && (
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* ════════════ PREMIUM CTA ════════════ */}
+      {!isSubscribed && (
+        <section
+          className="py-24 text-white"
+          style={{ background: "linear-gradient(135deg, #0f4d44 0%, #1f7a6d 50%, #0d4539 100%)" }}
+        >
+          {/* Subtle grid background */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.06]"
+            style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "24px 24px" }}
+          />
+          <div className="relative mx-auto max-w-3xl px-6 text-center">
+            <div className="mx-auto mb-7 grid h-18 w-18 place-items-center rounded-3xl bg-white/15 backdrop-blur-sm"
+                 style={{ width: "4.5rem", height: "4.5rem" }}>
+              <Crown size={32} />
+            </div>
+            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+              Unlock the Full Library
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/70">
+              Get unlimited access to all premium ebooks. Join thousands of learners advancing
+              their knowledge with BookBridge.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap justify-center gap-4">
               <Link href="/subscribe">
-                <Button>
-                  <Crown size={16} aria-hidden="true" />
-                  View plans
+                <Button
+                  size="lg"
+                  className="h-12 gap-2 bg-white px-8 font-bold text-palm shadow-xl hover:bg-white/90"
+                >
+                  <Crown size={18} />
+                  View Subscription Plans
                 </Button>
               </Link>
               <Link href="#catalog">
-                <Button variant="outline">
-                  Browse catalog
-                  <ArrowRight size={16} aria-hidden="true" />
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 border-white/30 bg-transparent px-8 text-white hover:bg-white/10"
+                >
+                  Browse Free Books
                 </Button>
               </Link>
             </div>
-          </div>
 
-          <div className="relative">
-            <Card className="bg-foreground p-5 text-background shadow-soft">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium uppercase tracking-normal text-background/60">
-                    Recommended shelf
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold">Student learning picks</h2>
-                </div>
-                <span className="grid h-12 w-12 place-items-center rounded-lg bg-background/10">
-                  <Library size={24} aria-hidden="true" />
-                </span>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-3">
-                {ebooks.slice(0, 3).map((ebook) => (
-                  <Link key={ebook.id} href={`/ebooks/${ebook.slug}`} className="block">
-                    <EbookCover ebook={ebook} compact />
-                  </Link>
-                ))}
-              </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <Metric label="Titles" value={ebooks.length.toString()} />
-                <Metric label="Premium" value={ebooks.filter((ebook) => ebook.isPremium).length.toString()} />
-                <Metric label="Status" value={isSubscribed ? "Open" : "Free"} />
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b bg-background">
-        <div className="mx-auto grid max-w-7xl gap-4 px-4 py-6 md:grid-cols-3">
-          <FeaturePill title="Focused catalog" description="Only practical ebooks for student work." />
-          <FeaturePill title="Fast discovery" description="Search by topic, author, or learning area." />
-          <FeaturePill title="Premium shelf" description="Clear access labels before you open a title." />
-        </div>
-      </section>
-
-      <section id="catalog" className="mx-auto max-w-7xl px-4 py-10">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-normal text-muted-foreground">Catalog</p>
-            <h2 className="mt-1 text-3xl font-semibold text-foreground">Available ebooks</h2>
-          </div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Showing {visibleStart}-{visibleEnd} of {filteredEbooks.length} titles
-          </p>
-        </div>
-
-        <div className="mt-6 rounded-lg border bg-background p-4 shadow-sm">
-          <div className="grid gap-4 lg:grid-cols-[minmax(18rem,0.85fr)_1fr] lg:items-start">
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                size={20}
-                aria-hidden="true"
-              />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search ebooks, authors, or categories"
-                className="h-12 pl-12 text-base shadow-none"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              {categories.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setCategory(item)}
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-sm font-medium transition",
-                    category === item
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {item}
-                </button>
-              ))}
+            <div className="mt-11 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-white/60">
+              {["Cancel anytime", "Instant access", "All premium titles", "New books monthly"].map(
+                (f) => (
+                  <span key={f} className="flex items-center gap-2">
+                    <BadgeCheck size={16} className="text-sun" />
+                    {f}
+                  </span>
+                )
+              )}
             </div>
           </div>
-        </div>
-
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {paginatedEbooks.map((ebook) => (
-            <EbookCard key={ebook.id} ebook={ebook} isSubscribed={isSubscribed} />
-          ))}
-        </div>
-
-        {filteredEbooks.length === 0 ? (
-          <Card className="mt-10 p-10 text-center">
-            <BookText className="mx-auto text-muted-foreground" size={44} aria-hidden="true" />
-            <p className="mt-3 text-xl font-semibold text-foreground">No ebooks found</p>
-            <p className="mt-1 text-sm text-muted-foreground">Try another keyword or category.</p>
-          </Card>
-        ) : null}
-
-        {filteredEbooks.length > EBOOKS_PER_PAGE ? (
-          <PaginationControls page={currentPage} totalPages={totalPages} onPageChange={setPage} />
-        ) : null}
-      </section>
+        </section>
+      )}
     </main>
+  );
+}
+
+/* ── Sub-components ─────────────────────────────────────────────────────── */
+
+function StatPill({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+        <Icon size={22} />
+      </span>
+      <div>
+        <p className="text-2xl font-extrabold leading-none text-foreground">{value}</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function FeaturedCard({ ebook, isSubscribed }: { ebook: Ebook; isSubscribed: boolean }) {
+  const locked = ebook.isPremium && !isSubscribed;
+  const href = locked
+    ? "/subscribe"
+    : ebook.fileUrl
+    ? `/ebooks/${ebook.slug}/read`
+    : `/ebooks/${ebook.slug}`;
+
+  return (
+    <Link href={href} className="group block">
+      <div className="overflow-hidden rounded-2xl shadow-soft transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-xl">
+        {/* Cover image */}
+        <EbookCover ebook={ebook} />
+
+      </div>
+      <div className="mt-3 min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">{ebook.category}</Badge>
+          {ebook.isPremium ? (
+            <Badge variant="outline" className="gap-1 border-amber-200 bg-amber-50 text-amber-800">
+              <Crown size={12} />
+              Premium
+            </Badge>
+          ) : null}
+        </div>
+        <p className="mt-2 truncate text-sm font-semibold text-foreground">{ebook.title}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">by {ebook.author}</p>
+        <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+          {locked ? (
+            <>
+              <LockKeyhole size={12} />
+              Subscribe to read
+            </>
+          ) : (
+            <>
+              <BookOpen size={12} />
+              Read now
+            </>
+          )}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function EbookCard({ ebook, isSubscribed }: { ebook: Ebook; isSubscribed: boolean }) {
+  const locked = ebook.isPremium && !isSubscribed;
+
+  return (
+    <Card className="group flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-200 hover:-translate-y-1 hover:shadow-soft">
+      <CardHeader className="p-3 pb-0">
+        <EbookCover ebook={ebook} />
+      </CardHeader>
+
+      <CardContent className="flex flex-1 flex-col p-5 pt-4">
+        <div className="mb-4 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{ebook.category}</Badge>
+            {ebook.isPremium ? (
+              <Badge variant="outline" className="gap-1 border-amber-200 bg-amber-50 text-amber-800">
+                <Crown size={12} />
+                Premium
+              </Badge>
+            ) : null}
+          </div>
+          <h2 className="mt-3 text-xl font-semibold leading-snug text-foreground">
+            {ebook.title}
+          </h2>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">by {ebook.author}</p>
+        </div>
+
+        <p className="flex-1 text-sm leading-6 text-muted-foreground line-clamp-3">
+          {ebook.description}
+        </p>
+
+        <div className="mt-4 flex gap-2 border-t border-border pt-4 text-xs">
+          <span className="rounded-full bg-muted px-3 py-1.5 font-medium text-muted-foreground">
+            {ebook.pages} pages
+          </span>
+          <span className="rounded-full bg-muted px-3 py-1.5 font-medium text-muted-foreground">
+            {ebook.publishedYear}
+          </span>
+        </div>
+
+        {locked ? (
+          <Link href="/subscribe" className="mt-4">
+            <Button variant="secondary" className="w-full rounded-full">
+              <LockKeyhole size={16} />
+              Upgrade to read
+            </Button>
+          </Link>
+        ) : ebook.fileUrl ? (
+          <Link href={`/ebooks/${ebook.slug}/read`} className="mt-4">
+            <Button className="w-full rounded-full">
+              <BookMarked size={16} />
+              Open reader
+              <ArrowRight
+                className="transition group-hover:translate-x-0.5"
+                size={16}
+              />
+            </Button>
+          </Link>
+        ) : (
+          <Link href={`/ebooks/${ebook.slug}`} className="mt-4">
+            <Button className="w-full rounded-full">
+              <BookMarked size={16} />
+              View details
+              <ArrowRight
+                className="transition group-hover:translate-x-0.5"
+                size={16}
+              />
+            </Button>
+          </Link>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 function PaginationControls({
   page,
   totalPages,
-  onPageChange
+  onPageChange,
 }: {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
 }) {
-  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   return (
     <div className="mt-8 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -226,28 +690,29 @@ function PaginationControls({
           type="button"
           variant="outline"
           size="sm"
+          className="rounded-full"
           disabled={page === 1}
           onClick={() => onPageChange(Math.max(1, page - 1))}
           aria-label="Previous page"
         >
-          <ChevronLeft size={16} aria-hidden="true" />
+          <ChevronLeft size={16} />
           Previous
         </Button>
 
-        {pageNumbers.map((pageNumber) => (
+        {pageNumbers.map((num) => (
           <button
-            key={pageNumber}
+            key={num}
             type="button"
-            onClick={() => onPageChange(pageNumber)}
-            aria-current={page === pageNumber ? "page" : undefined}
+            onClick={() => onPageChange(num)}
+            aria-current={page === num ? "page" : undefined}
             className={cn(
-              "grid h-9 min-w-9 place-items-center rounded-md border px-3 text-sm font-medium transition",
-              page === pageNumber
+              "grid h-9 min-w-9 place-items-center rounded-full border px-3 text-sm font-medium transition",
+              page === num
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
-            {pageNumber}
+            {num}
           </button>
         ))}
 
@@ -255,109 +720,15 @@ function PaginationControls({
           type="button"
           variant="outline"
           size="sm"
+          className="rounded-full"
           disabled={page === totalPages}
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           aria-label="Next page"
         >
           Next
-          <ChevronRight size={16} aria-hidden="true" />
+          <ChevronRight size={16} />
         </Button>
       </div>
     </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-background/10 bg-background/10 p-3">
-      <p className="text-2xl font-semibold text-background">{value}</p>
-      <p className="text-xs font-medium uppercase tracking-normal text-background/65">{label}</p>
-    </div>
-  );
-}
-
-function FeaturePill({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-        <BadgeCheck size={17} aria-hidden="true" />
-      </span>
-      <span>
-        <span className="block font-semibold text-foreground">{title}</span>
-        <span className="mt-1 block text-sm leading-6 text-muted-foreground">{description}</span>
-      </span>
-    </div>
-  );
-}
-
-function EbookCard({ ebook, isSubscribed }: { ebook: Ebook; isSubscribed: boolean }) {
-  const locked = ebook.isPremium && !isSubscribed;
-
-  return (
-    <Card className="group flex h-full flex-col overflow-hidden transition duration-200 hover:-translate-y-1 hover:shadow-md">
-      <CardHeader className="p-3">
-        <EbookCover ebook={ebook} />
-      </CardHeader>
-
-      <CardContent className="flex flex-1 flex-col p-5 pt-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{ebook.category}</Badge>
-          {ebook.isPremium ? (
-            <Badge variant="outline" className="gap-1 border-amber-200 bg-amber-50 text-amber-800">
-              <Crown size={13} aria-hidden="true" />
-              Premium
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-              Free
-            </Badge>
-          )}
-        </div>
-
-        <h2 className="mt-3 text-xl font-semibold leading-snug text-foreground">{ebook.title}</h2>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">by {ebook.author}</p>
-        <p className="mt-3 flex-1 text-sm leading-6 text-muted-foreground">{ebook.description}</p>
-
-        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-ink/10 pt-4 text-sm">
-          <span className="rounded-md bg-muted px-3 py-2 font-medium text-muted-foreground">{ebook.pages} pages</span>
-          <span className="rounded-md bg-muted px-3 py-2 text-right font-medium text-muted-foreground">
-            {ebook.publishedYear}
-          </span>
-        </div>
-
-        {locked ? (
-          <Link href="/subscribe" className="mt-4">
-            <Button variant="secondary" className="w-full">
-              <LockKeyhole size={16} aria-hidden="true" />
-              Upgrade to read
-            </Button>
-          </Link>
-        ) : ebook.fileUrl ? (
-          <Link href={`/ebooks/${ebook.slug}/read`} className="mt-4">
-            <Button className="w-full">
-              <BookMarked size={16} aria-hidden="true" />
-              Open reader
-              <ArrowRight
-                className="transition group-hover:translate-x-0.5"
-                size={16}
-                aria-hidden="true"
-              />
-            </Button>
-          </Link>
-        ) : (
-          <Link href={`/ebooks/${ebook.slug}`} className="mt-4">
-            <Button className="w-full">
-              <BookMarked size={16} aria-hidden="true" />
-              View details
-              <ArrowRight
-                className="transition group-hover:translate-x-0.5"
-                size={16}
-                aria-hidden="true"
-              />
-            </Button>
-          </Link>
-        )}
-      </CardContent>
-    </Card>
   );
 }

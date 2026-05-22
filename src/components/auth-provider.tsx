@@ -34,6 +34,7 @@ type AuthContextValue = {
 };
 
 const STORAGE_KEY = "bookbridge_demo_user";
+const SUBSCRIPTION_COOKIE = "bookbridge_demo_subscription";
 
 const demoUsers: DemoUserWithPassword[] = [
   {
@@ -71,6 +72,17 @@ function getOneMonthFromNow() {
   return nextMonth.toISOString().slice(0, 10);
 }
 
+function syncSubscriptionCookie(nextUser: DemoUser | null) {
+  const cookieBase = `${SUBSCRIPTION_COOKIE}=; path=/; SameSite=Lax`;
+
+  if (nextUser?.subscriptionStatus !== "active") {
+    document.cookie = `${cookieBase}; max-age=0`;
+    return;
+  }
+
+  document.cookie = `${SUBSCRIPTION_COOKIE}=active; path=/; SameSite=Lax; max-age=2592000`;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<DemoUser | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -80,10 +92,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser) as DemoUser);
+        const parsedUser = JSON.parse(savedUser) as DemoUser;
+        setUser(parsedUser);
+        syncSubscriptionCookie(parsedUser);
       } catch {
         window.localStorage.removeItem(STORAGE_KEY);
+        syncSubscriptionCookie(null);
       }
+    } else {
+      syncSubscriptionCookie(null);
     }
 
     setIsReady(true);
@@ -94,10 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (nextUser) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+      syncSubscriptionCookie(nextUser);
       return;
     }
 
     window.localStorage.removeItem(STORAGE_KEY);
+    syncSubscriptionCookie(null);
   }, []);
 
   const login = useCallback(

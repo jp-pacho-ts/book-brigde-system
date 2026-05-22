@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Download,
   FileText,
   Library,
   Loader2,
@@ -88,6 +89,7 @@ export function EbookReader({ ebook }: { ebook: Ebook }) {
 }
 
 function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) {
+  const { isSubscribed } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderTaskRef = useRef<RenderTask | null>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -232,6 +234,10 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
     setScale(Math.min(Math.max(nextScale, MIN_SCALE), MAX_SCALE));
   }
 
+  const previousDisabled = !pdf || pageNumber <= 1;
+  const nextDisabled = !pdf || pageNumber >= pdf.numPages;
+  const downloadHref = `/api/ebooks/${ebook.slug}/download`;
+
   return (
     <section
       className="flex flex-1 flex-col bg-muted/60"
@@ -246,7 +252,8 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
           <div className="flex flex-wrap items-center gap-2">
             <ReaderIconButton
               label="Previous page"
-              disabled={!pdf || pageNumber <= 1}
+              className="hidden sm:inline-flex"
+              disabled={previousDisabled}
               onClick={() => goToPage(pageNumber - 1)}
             >
               <ChevronLeft size={18} aria-hidden="true" />
@@ -275,7 +282,8 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
 
             <ReaderIconButton
               label="Next page"
-              disabled={!pdf || pageNumber >= pdf.numPages}
+              className="hidden sm:inline-flex"
+              disabled={nextDisabled}
               onClick={() => goToPage(pageNumber + 1)}
             >
               <ChevronRight size={18} aria-hidden="true" />
@@ -300,6 +308,16 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
             >
               <Plus size={18} aria-hidden="true" />
             </ReaderIconButton>
+            {isSubscribed ? (
+              <a
+                href={downloadHref}
+                className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                download
+              >
+                <Download size={18} aria-hidden="true" />
+                Download
+              </a>
+            ) : null}
           </div>
         </div>
       </div>
@@ -341,6 +359,28 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
                 )}
               />
             </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11"
+              disabled={previousDisabled}
+              onClick={() => goToPage(pageNumber - 1)}
+            >
+              <ChevronLeft size={18} aria-hidden="true" />
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11"
+              disabled={nextDisabled}
+              onClick={() => goToPage(pageNumber + 1)}
+            >
+              Next
+              <ChevronRight size={18} aria-hidden="true" />
+            </Button>
           </div>
         </div>
       </div>
@@ -396,11 +436,13 @@ function ReaderShell({ ebook, children }: { ebook: Ebook; children: React.ReactN
 
 function ReaderIconButton({
   label,
+  className,
   disabled,
   onClick,
   children
 }: {
   label: string;
+  className?: string;
   disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
@@ -413,6 +455,7 @@ function ReaderIconButton({
       title={label}
       aria-label={label}
       disabled={disabled}
+      className={className}
       onClick={onClick}
     >
       {children}
