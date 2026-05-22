@@ -67,11 +67,11 @@ const HERO_SLIDES = [
 ] as const;
 
 const BOOK_POSITIONS = [
-  { top: "12%", left: "8%", rotate: "-10deg", z: 2, scale: 0.85 },
-  { top: "5%", left: "32%", rotate: "-3deg", z: 4, scale: 1 },
-  { top: "18%", left: "58%", rotate: "7deg", z: 3, scale: 0.9 },
-  { top: "48%", left: "18%", rotate: "4deg", z: 2, scale: 0.8 },
-  { top: "44%", left: "50%", rotate: "-8deg", z: 3, scale: 0.95 },
+  { top: "18%", left: "8%", rotate: "-9deg", z: 2, scale: 0.88 },
+  { top: "8%", left: "35%", rotate: "-3deg", z: 4, scale: 1 },
+  { top: "24%", left: "64%", rotate: "7deg", z: 3, scale: 0.92 },
+  { top: "55%", left: "20%", rotate: "4deg", z: 2, scale: 0.84 },
+  { top: "51%", left: "55%", rotate: "-7deg", z: 3, scale: 0.95 },
 ];
 
 export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categories: string[] }) {
@@ -171,7 +171,7 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
   return (
     <main>
       {/* ════════════ HERO ════════════ */}
-      <section className="relative flex min-h-screen items-center overflow-hidden bg-ink text-white">
+      <section className="relative flex min-h-[calc(100svh-65px)] items-center overflow-hidden bg-ink text-white">
         {/* Background gradients */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-ink via-[#101c28] to-[#0d3530]" />
         <div
@@ -186,7 +186,14 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
 
         {/* Floating book display — right 50% desktop only */}
         {ebooks.length >= 3 && (
-          <div className="absolute inset-y-0 right-0 hidden w-[52%] lg:block" style={{ zIndex: 1 }}>
+          <div
+            className="absolute inset-y-6 right-6 hidden w-[48%] lg:block"
+            style={{
+              zIndex: 1,
+              maskImage: "linear-gradient(to right, transparent 0%, black 20%, black 100%)",
+              WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 20%, black 100%)",
+            }}
+          >
             {ebooks.slice(0, 5).map((ebook, i) => {
               const pos = BOOK_POSITIONS[i];
               if (!pos) return null;
@@ -197,14 +204,14 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
                   style={{
                     top: pos.top,
                     left: pos.left,
-                    width: `${Math.round(148 * pos.scale)}px`,
+                    width: `${Math.round(138 * pos.scale)}px`,
                     zIndex: pos.z,
                     transform: `rotate(${pos.rotate})`,
                     borderRadius: 10,
                     boxShadow: "0 24px 60px rgba(0,0,0,0.65), 0 6px 16px rgba(0,0,0,0.35)",
                   }}
                 >
-                  <EbookCover ebook={ebook} />
+                  <EbookCover ebook={ebook} compact />
                 </div>
               );
             })}
@@ -213,12 +220,16 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
 
         {/* Fade books into text area — only fade the left 40% of the book zone */}
         <div
-          className="pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] lg:block"
-          style={{ zIndex: 2, background: "linear-gradient(to left, transparent 30%, rgba(17,28,40,0.4) 60%, #17202a 82%)" }}
+          className="pointer-events-none absolute inset-0 hidden lg:block"
+          style={{
+            zIndex: 2,
+            background:
+              "linear-gradient(90deg, rgba(17,28,40,0.92) 0%, rgba(17,28,40,0.74) 42%, rgba(17,28,40,0.28) 62%, rgba(13,53,48,0.02) 100%)",
+          }}
         />
 
         {/* Content */}
-        <div className="relative mx-auto w-full max-w-7xl px-6 py-28 lg:py-0" style={{ zIndex: 3 }}>
+        <div className="relative mx-auto w-full max-w-7xl px-6 py-16 sm:py-20 lg:py-0" style={{ zIndex: 3 }}>
           <div className="max-w-[610px]">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-sm">
@@ -228,7 +239,7 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
 
             {/* Animated title + subtitle — key triggers re-animation */}
             <div key={heroSlide} className="hero-slide-in mt-7">
-              <h1 className="text-5xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl">
+              <h1 className="text-5xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl lg:text-[4.65rem]">
                 {slide.title}
               </h1>
               <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/65 sm:text-xl">
@@ -284,7 +295,7 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
         </div>
 
         {/* Scroll hint */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-white/30" style={{ zIndex: 3 }}>
+        <div className="absolute bottom-5 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1.5 text-white/30 lg:flex" style={{ zIndex: 3 }}>
           <span className="text-xs font-medium tracking-widest uppercase">Scroll</span>
           <div className="h-8 w-px bg-gradient-to-b from-white/30 to-transparent" />
         </div>
