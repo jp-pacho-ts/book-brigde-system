@@ -23,17 +23,24 @@ type DemoUserWithPassword = DemoUser & {
   password: string;
 };
 
+type AuthResult = {
+  ok: boolean;
+  message?: string;
+};
+
 type AuthContextValue = {
   user: DemoUser | null;
   isReady: boolean;
   login: (email: string, password: string) => boolean;
+  register: (name: string, email: string, password: string) => AuthResult;
   logout: () => void;
-  activateSubscription: () => void;
+  activateSubscription: () => boolean;
   cancelSubscription: () => void;
   isSubscribed: boolean;
 };
 
 const STORAGE_KEY = "bookbridge_demo_user";
+const ACCOUNTS_STORAGE_KEY = "bookbridge_demo_accounts";
 const SUBSCRIPTION_COOKIE = "bookbridge_demo_subscription";
 
 const demoUsers: DemoUserWithPassword[] = [
@@ -72,6 +79,78 @@ function getOneMonthFromNow() {
   return nextMonth.toISOString().slice(0, 10);
 }
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function createDemoUserId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `user_${crypto.randomUUID()}`;
+  }
+
+  return `user_${Date.now()}`;
+}
+
+function getStoredAccounts() {
+  if (typeof window === "undefined") {
+    return demoUsers;
+  }
+
+  const savedAccounts = window.localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+  const mergedAccounts = [...demoUsers];
+
+  if (savedAccounts) {
+    try {
+      const parsedAccounts = JSON.parse(savedAccounts) as DemoUserWithPassword[];
+
+      if (Array.isArray(parsedAccounts)) {
+        parsedAccounts.forEach((account) => {
+          if (!account?.email || !account.password) {
+            return;
+          }
+
+          const accountIndex = mergedAccounts.findIndex(
+            (demoUser) => normalizeEmail(demoUser.email) === normalizeEmail(account.email)
+          );
+
+          if (accountIndex >= 0) {
+            mergedAccounts[accountIndex] = account;
+            return;
+          }
+
+          mergedAccounts.push(account);
+        });
+      }
+    } catch {
+      window.localStorage.removeItem(ACCOUNTS_STORAGE_KEY);
+    }
+  }
+
+  return mergedAccounts;
+}
+
+function saveAccounts(accounts: DemoUserWithPassword[]) {
+  window.localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+}
+
+function saveAccountUpdate(nextUser: DemoUser) {
+  const accounts = getStoredAccounts();
+  const accountIndex = accounts.findIndex(
+    (account) => account.id === nextUser.id || normalizeEmail(account.email) === normalizeEmail(nextUser.email)
+  );
+
+  if (accountIndex < 0) {
+    return false;
+  }
+
+  accounts[accountIndex] = {
+    ...accounts[accountIndex],
+    ...nextUser
+  };
+  saveAccounts(accounts);
+  return true;
+}
+
 function syncSubscriptionCookie(nextUser: DemoUser | null) {
   const cookieBase = `${SUBSCRIPTION_COOKIE}=; path=/; SameSite=Lax`;
 
@@ -88,6 +167,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    saveAccounts(getStoredAccounts());
+
     const savedUser = window.localStorage.getItem(STORAGE_KEY);
 
     if (savedUser) {
@@ -121,9 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     (email: string, password: string) => {
-      const matchedUser = demoUsers.find(
+      const matchedUser = getStoredAccounts().find(
         (demoUser) =>
-          demoUser.email.toLowerCase() === email.trim().toLowerCase() &&
+          normalizeEmail(demoUser.email) === normalizeEmail(email) &&
           demoUser.password === password
       );
 
@@ -137,23 +218,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [saveUser]
   );
 
+  const register = useCallback(
+    (name: string, email: string, password: string) => {
+      const cleanName = name.trim();
+      const cleanEmail = normalizeEmail(email);
+
+      if (!cleanName) {
+        return { ok: false, message: "Enter your full name." };
+      }
+
+      if (!cleanEmail || !cleanEmail.includes("@")) {
+        return { ok: false, message: "Enter a valid email address." };
+      }
+
+      if (password.length < 6) {
+        return { ok: false, message: "Password must be at least 6 characters." };
+      }
+
+      const accounts = getStoredAccounts();
+      const emailTaken = accounts.some((account) => normalizeEmail(account.email) === cleanEmail);
+
+      if (emailTaken) {
+        return { ok: false, message: "An account already exists for that email." };
+      }
+
+      const nextAccount: DemoUserWithPassword = {
+        id: createDemoUserId(),
+        name: cleanName,
+        email: cleanEmail,
+        password,
+        subscriptionStatus: "free"
+      };
+
+      saveAccounts([...accounts, nextAccount]);
+      saveUser(stripPassword(nextAccount));
+      return { ok: true };
+    },
+    [saveUser]
+  );
+
   const logout = useCallback(() => {
     saveUser(null);
   }, [saveUser]);
 
   const activateSubscription = useCallback(() => {
-    const currentUser =
-      user ??
-      stripPassword({
-        ...demoUsers[0],
-        subscriptionStatus: "free"
-      });
+    if (!user) {
+      return false;
+    }
 
-    saveUser({
-      ...currentUser,
+    const updatedUser = {
+      ...user,
       subscriptionStatus: "active",
       subscriptionEndsAt: getOneMonthFromNow()
-    });
+    } satisfies DemoUser;
+
+    saveAccountUpdate(updatedUser);
+    saveUser(updatedUser);
+    return true;
   }, [saveUser, user]);
 
   const cancelSubscription = useCallback(() => {
@@ -161,11 +282,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    saveUser({
+    const updatedUser = {
       ...user,
       subscriptionStatus: "free",
       subscriptionEndsAt: undefined
-    });
+    } satisfies DemoUser;
+
+    saveAccountUpdate(updatedUser);
+    saveUser(updatedUser);
   }, [saveUser, user]);
 
   const value = useMemo<AuthContextValue>(
@@ -173,12 +297,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isReady,
       login,
+      register,
       logout,
       activateSubscription,
       cancelSubscription,
       isSubscribed: user?.subscriptionStatus === "active"
     }),
-    [activateSubscription, cancelSubscription, isReady, login, logout, user]
+    [activateSubscription, cancelSubscription, isReady, login, logout, register, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

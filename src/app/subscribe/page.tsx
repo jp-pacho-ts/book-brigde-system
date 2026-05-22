@@ -17,7 +17,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,6 +50,12 @@ export default function SubscribePage() {
   const [billingZip, setBillingZip] = useState("1000");
   const [message, setMessage] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (user?.name) {
+      setCardholderName(user.name);
+    }
+  }, [user?.name]);
 
   const cardLastFour = normalizeCardNumber(cardNumber).slice(-4) || "••••";
 
@@ -88,13 +94,18 @@ export default function SubscribePage() {
 
     setIsProcessing(true);
     window.setTimeout(() => {
-      activateSubscription();
+      if (!activateSubscription()) {
+        setIsProcessing(false);
+        setMessage("Please sign in before activating premium access.");
+        return;
+      }
+
       router.push("/account");
     }, 650);
   }
 
   function resetCardDetails() {
-    setCardholderName("Student Reader");
+    setCardholderName(user?.name ?? "Student Reader");
     setCardNumber(ACCEPTED_CARD_NUMBER);
     setExpiry(ACCEPTED_EXPIRY);
     setCvc(ACCEPTED_CVC);
@@ -308,10 +319,10 @@ export default function SubscribePage() {
                         <p className="mt-1 text-sm text-amber-700">
                           Please{" "}
                           <Link
-                            href="/login"
+                            href="/login?redirect=/subscribe"
                             className="font-bold underline underline-offset-2 hover:text-amber-900"
                           >
-                            sign in
+                            sign in or create an account
                           </Link>{" "}
                           before activating premium access.
                         </p>

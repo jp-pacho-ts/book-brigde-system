@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpenCheck, LibraryBig, LogIn, ShieldCheck } from "lucide-react";
+import { BookOpenCheck, LibraryBig, LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Badge } from "@/components/ui/badge";
@@ -13,21 +13,50 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
+  const [mode, setMode] = useState<"signin" | "register">("signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const isRegisterMode = mode === "register";
+
+  function getRedirectPath() {
+    if (typeof window === "undefined") {
+      return "/account";
+    }
+
+    const redirect = new URLSearchParams(window.location.search).get("redirect");
+    return redirect?.startsWith("/") ? redirect : "/account";
+  }
+
+  function switchMode(nextMode: "signin" | "register") {
+    setMode(nextMode);
+    setError("");
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    if (isRegisterMode) {
+      const result = register(name, email, password);
+
+      if (!result.ok) {
+        setError(result.message ?? "Unable to create account.");
+        return;
+      }
+
+      router.push(getRedirectPath());
+      return;
+    }
 
     if (!login(email, password)) {
       setError("Invalid email or password.");
       return;
     }
 
-    router.push("/account");
+    router.push(getRedirectPath());
   }
 
   return (
@@ -67,16 +96,39 @@ export default function LoginPage() {
         <Card className="shadow-soft">
           <CardHeader className="flex-row items-center justify-between border-b">
             <div>
-              <h2 className="text-2xl font-semibold text-foreground">Sign in</h2>
-              <p className="text-sm text-muted-foreground">Enter your account credentials</p>
+              <h2 className="text-2xl font-semibold text-foreground">
+                {isRegisterMode ? "Create account" : "Sign in"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {isRegisterMode ? "Start with a free account" : "Enter your account credentials"}
+              </p>
             </div>
             <span className="grid h-12 w-12 place-items-center rounded-lg bg-primary/10 text-primary">
-              <BookOpenCheck size={24} aria-hidden="true" />
+              {isRegisterMode ? (
+                <UserPlus size={24} aria-hidden="true" />
+              ) : (
+                <BookOpenCheck size={24} aria-hidden="true" />
+              )}
             </span>
           </CardHeader>
 
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isRegisterMode ? (
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Your name"
+                    className="mt-2 h-11"
+                    required
+                  />
+                </div>
+              ) : null}
+
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -110,9 +162,24 @@ export default function LoginPage() {
               ) : null}
 
               <Button type="submit" className="h-11 w-full">
-                <LogIn size={18} aria-hidden="true" />
-                Sign in
+                {isRegisterMode ? (
+                  <UserPlus size={18} aria-hidden="true" />
+                ) : (
+                  <LogIn size={18} aria-hidden="true" />
+                )}
+                {isRegisterMode ? "Create account" : "Sign in"}
               </Button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                {isRegisterMode ? "Already have an account?" : "New to BookBridge?"}{" "}
+                <button
+                  type="button"
+                  onClick={() => switchMode(isRegisterMode ? "signin" : "register")}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {isRegisterMode ? "Sign in" : "Create account"}
+                </button>
+              </p>
 
               <p className="text-center text-sm text-muted-foreground">
                 Browse first?{" "}
