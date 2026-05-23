@@ -13,6 +13,7 @@ import {
   Sparkles,
   UserCog,
   UserRound,
+  UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,10 @@ import { logoutAdminAction } from "@/app/admin/actions";
 export function AppHeader() {
   const pathname = usePathname();
   const { user, logout, isSubscribed } = useAuth();
+  const publicLinks = [
+    { href: "/", label: "Library", icon: BookOpen },
+    { href: "/about", label: "About", icon: UsersRound },
+  ];
 
   if (pathname.startsWith("/admin")) {
     return <AdminHeader pathname={pathname} />;
@@ -46,6 +51,28 @@ export function AppHeader() {
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          <nav className="flex items-center gap-1 rounded-lg border bg-muted/60 p-1">
+            {publicLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-background hover:text-foreground"
+                  )}
+                >
+                  <Icon size={15} aria-hidden="true" />
+                  <span className="hidden sm:inline">{link.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
           {user ? (
             /* ── Logged in ── */
             <>
