@@ -363,11 +363,10 @@ export function LibraryHome({ ebooks, categories }: { ebooks: Ebook[]; categorie
               ref={carouselRef}
               className="flex gap-6 overflow-x-scroll scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {ebooks.map((ebook, i) => (
+              {ebooks.map((ebook) => (
                 <div
                   key={ebook.id}
-                  className={cn(i % PER_VIEW === 0 ? "snap-start" : "")}
-                  style={{ flexShrink: 0, width: "calc(25% - 18px)" }}
+                  className="snap-start shrink-0 w-[calc(50%-12px)] sm:w-[calc(33.333%-16px)] lg:w-[calc(25%-18px)]"
                 >
                   <FeaturedCard ebook={ebook} isSubscribed={isSubscribed} />
                 </div>
