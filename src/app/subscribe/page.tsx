@@ -42,10 +42,10 @@ const PLAN_FEATURES = [
 export default function SubscribePage() {
   const router = useRouter();
   const { user, isSubscribed, activateSubscription } = useAuth();
-  const [cardholderName, setCardholderName] = useState("Student Reader");
-  const [cardNumber, setCardNumber] = useState(ACCEPTED_CARD_NUMBER);
-  const [expiry, setExpiry] = useState(ACCEPTED_EXPIRY);
-  const [cvc, setCvc] = useState(ACCEPTED_CVC);
+  const [cardholderName, setCardholderName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvc, setCvc] = useState("");
   const [billingCountry, setBillingCountry] = useState("Philippines");
   const [billingZip, setBillingZip] = useState("1000");
   const [message, setMessage] = useState("");
@@ -240,7 +240,7 @@ export default function SubscribePage() {
                   </div>
                 </div>
 
-                <CardContent className="p-5">
+                <CardContent className="p-5 pt-5">
                   {/* Line items */}
                   <div className="space-y-2.5 border-b pb-4">
                     <SummaryRow label="Premium membership" value="PHP 99.00" />
@@ -342,7 +342,7 @@ export default function SubscribePage() {
                           value={cardholderName}
                           onChange={(e) => setCardholderName(e.target.value)}
                           className="mt-2 h-11"
-                          placeholder="Full name on card"
+                          placeholder=""
                           autoComplete="off"
                           required
                         />
@@ -370,7 +370,7 @@ export default function SubscribePage() {
                             onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
                             className="h-11 pl-10 font-mono tracking-widest"
                             inputMode="numeric"
-                            placeholder="1234 5678 9012 3456"
+                            placeholder=""
                             autoComplete="off"
                             required
                           />
@@ -386,7 +386,7 @@ export default function SubscribePage() {
                             onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                             className="mt-2 h-11"
                             inputMode="numeric"
-                            placeholder="MM/YY"
+                            placeholder=""
                             autoComplete="off"
                             required
                           />
@@ -401,7 +401,7 @@ export default function SubscribePage() {
                             }
                             className="mt-2 h-11"
                             inputMode="numeric"
-                            placeholder="123"
+                            placeholder=""
                             autoComplete="off"
                             required
                           />
