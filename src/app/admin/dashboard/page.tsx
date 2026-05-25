@@ -18,6 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PendingUploads } from "@/components/admin/pending-uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,8 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
       </section>
+
+      <PendingUploads />
 
       <section className="mx-auto max-w-7xl px-4 py-10">
         <div className="overflow-hidden rounded-lg border bg-background shadow-sm">

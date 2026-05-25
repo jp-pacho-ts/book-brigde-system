@@ -151,15 +151,19 @@ function saveAccountUpdate(nextUser: DemoUser) {
   return true;
 }
 
+const USER_EMAIL_COOKIE = "bookbridge_user_email";
+
 function syncSubscriptionCookie(nextUser: DemoUser | null) {
   const cookieBase = `${SUBSCRIPTION_COOKIE}=; path=/; SameSite=Lax`;
 
   if (nextUser?.subscriptionStatus !== "active") {
     document.cookie = `${cookieBase}; max-age=0`;
+    document.cookie = `${USER_EMAIL_COOKIE}=; path=/; SameSite=Lax; max-age=0`;
     return;
   }
 
   document.cookie = `${SUBSCRIPTION_COOKIE}=active; path=/; SameSite=Lax; max-age=2592000`;
+  document.cookie = `${USER_EMAIL_COOKIE}=${encodeURIComponent(nextUser.email)}; path=/; SameSite=Lax; max-age=2592000`;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

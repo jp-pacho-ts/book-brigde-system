@@ -1,22 +1,37 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BadgeCheck,
   BookOpen,
+  CheckCircle2,
+  Clock,
   Crown,
   LibraryBig,
   LogIn,
   ShieldCheck,
   Sparkles,
+  Upload,
   XCircle
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+type UserEbook = {
+  id: string;
+  slug: string;
+  title: string;
+  author: string;
+  category: string;
+  status: "PENDING" | "PUBLISHED" | "REJECTED";
+  coverImageUrl: string | null;
+  createdAt: string;
+};
 
 type AccountStats = {
   total: number;
@@ -132,9 +147,17 @@ export function AccountDashboard({ stats }: { stats: AccountStats }) {
                 <Button>Browse ebooks</Button>
               </Link>
               {isSubscribed ? (
-                <Button type="button" onClick={cancelSubscription} variant="destructive">
-                  Cancel subscription
-                </Button>
+                <>
+                  <Link href="/upload">
+                    <Button variant="outline" className="gap-2">
+                      <Upload size={16} />
+                      Upload an ebook
+                    </Button>
+                  </Link>
+                  <Button type="button" onClick={cancelSubscription} variant="destructive">
+                    Cancel subscription
+                  </Button>
+                </>
               ) : (
                 <Link href="/subscribe">
                   <Button>Upgrade to premium</Button>
@@ -144,7 +167,99 @@ export function AccountDashboard({ stats }: { stats: AccountStats }) {
           </CardContent>
         </Card>
       </section>
+
+      {isSubscribed && <MyUploadsSection />}
     </main>
+  );
+}
+
+function MyUploadsSection() {
+  const [ebooks, setEbooks] = useState<UserEbook[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/user/ebooks")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setEbooks(data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return null;
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 pb-12">
+      <Card className="shadow-soft">
+        <CardHeader className="flex flex-row items-center justify-between border-b">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-palm">My Contributions</p>
+            <h2 className="mt-1 text-2xl font-extrabold text-foreground">My Uploads</h2>
+          </div>
+          <Link href="/upload">
+            <Button size="sm" className="gap-2">
+              <Upload size={15} />
+              New upload
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {ebooks.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <span className="grid h-14 w-14 place-items-center rounded-full bg-muted text-muted-foreground">
+                <BookOpen size={28} />
+              </span>
+              <p className="font-semibold text-foreground">No uploads yet</p>
+              <p className="text-sm text-muted-foreground">Share your knowledge with the community.</p>
+              <Link href="/upload">
+                <Button size="sm" className="mt-1 gap-2">
+                  <Upload size={15} />
+                  Upload your first ebook
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <ul className="divide-y">
+              {ebooks.map((ebook) => (
+                <li key={ebook.id} className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground">{ebook.title}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      {ebook.author} &middot; {ebook.category}
+                    </p>
+                  </div>
+                  <UploadStatusBadge status={ebook.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function UploadStatusBadge({ status }: { status: UserEbook["status"] }) {
+  if (status === "PUBLISHED") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+        <CheckCircle2 size={13} />
+        Published
+      </span>
+    );
+  }
+  if (status === "REJECTED") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+        <XCircle size={13} />
+        Rejected
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+      <Clock size={13} />
+      Pending
+    </span>
   );
 }
 

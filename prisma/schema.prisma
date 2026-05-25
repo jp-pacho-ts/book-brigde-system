@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum SubscriptionStatus {
@@ -17,6 +18,12 @@ enum SubscriptionStatus {
 enum AdminRole {
   SUPER_ADMIN
   ADMIN
+}
+
+enum EbookStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
 }
 
 model User {
@@ -42,19 +49,21 @@ model AdminUser {
 }
 
 model Ebook {
-  id            String   @id @default(cuid())
-  slug          String   @unique
-  title         String
-  author        String
-  category      String
-  description   String
-  pages         Int
-  publishedYear Int
-  isPremium     Boolean  @default(false)
-  fileUrl       String?
-  coverImageUrl String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  title            String
+  author           String
+  category         String
+  description      String
+  pages            Int
+  publishedYear    Int
+  isPremium        Boolean     @default(false)
+  fileUrl          String?
+  coverImageUrl    String?
+  status           EbookStatus @default(PUBLISHED)
+  uploadedByEmail  String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 model Subscription {

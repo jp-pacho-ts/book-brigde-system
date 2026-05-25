@@ -40,7 +40,8 @@ export function formatEbook(ebook: PrismaEbook): Ebook {
 
 export async function listEbooks() {
   const ebooks = await prisma.ebook.findMany({
-    orderBy: [{ category: "asc" }, { title: "asc" }]
+    where: { status: "PUBLISHED" },
+    orderBy: [{ category: "asc" }, { title: "asc" }],
   });
 
   return ebooks.map(formatEbook);
@@ -56,13 +57,13 @@ export async function getEbookBySlug(slug: string) {
 
 export async function getEbookStats() {
   const [total, premium] = await Promise.all([
-    prisma.ebook.count(),
-    prisma.ebook.count({ where: { isPremium: true } })
+    prisma.ebook.count({ where: { status: "PUBLISHED" } }),
+    prisma.ebook.count({ where: { status: "PUBLISHED", isPremium: true } }),
   ]);
 
   return {
     total,
     premium,
-    free: total - premium
+    free: total - premium,
   };
 }

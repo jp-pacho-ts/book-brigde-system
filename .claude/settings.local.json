@@ -9,7 +9,11 @@
       "Bash(npx playwright *)",
       "Bash(node -e ' *)",
       "Bash(npm install *)",
-      "Bash('button[aria-label=\\\\\"Next\\\\\"]')"
+      "Bash('button[aria-label=\\\\\"Next\\\\\"]')",
+      "Bash(mkdir -p \"c:/Users/JP Pacho/Desktop/bookbrigdesystem/src/app/api/admin/ebooks/pending\" && mkdir -p \"c:/Users/JP Pacho/Desktop/bookbrigdesystem/src/app/api/admin/ebooks/[id]\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\JP Pacho\\Desktop\\bookbrigdesystem\\src\\app\\api\\admin\\ebooks"
     ]
   }
 }

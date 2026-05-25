@@ -11,6 +11,7 @@ import {
   LogOut,
   ShieldCheck,
   Sparkles,
+  Upload,
   UserCog,
   UserRound,
   UsersRound,
@@ -92,6 +93,16 @@ export function AppHeader() {
                   </Badge>
                 ) : null}
               </div>
+
+              {/* Upload link for premium users */}
+              {isSubscribed && (
+                <Link href="/upload">
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    <Upload size={14} aria-hidden="true" />
+                    <span className="hidden sm:inline">Upload</span>
+                  </Button>
+                </Link>
+              )}
 
               {/* Upgrade nudge for non-subscribers */}
               {!isSubscribed && (
