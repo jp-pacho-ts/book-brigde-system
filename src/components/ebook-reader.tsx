@@ -1,46 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
   Crown,
   Download,
+  ExternalLink,
   FileText,
   Library,
   Loader2,
-  LockKeyhole,
-  Minus,
-  Plus
+  LockKeyhole
 } from "lucide-react";
-import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import type { Ebook } from "@/lib/ebooks";
 import { useAuth } from "@/components/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-
-const pdfWorkerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.js", import.meta.url).toString();
-const MIN_SCALE = 0.7;
-const MAX_SCALE = 1.8;
-const SCALE_STEP = 0.15;
-const PDF_RANGE_CHUNK_SIZE = 256 * 1024;
-const MAX_RENDER_PIXEL_RATIO = 2;
-
-type PdfProgress = {
-  loaded: number;
-  total?: number;
-};
-
-type PdfLoadingTask = {
-  promise: Promise<PDFDocumentProxy>;
-  destroy: () => Promise<void>;
-  onProgress?: Function;
-};
 
 export function EbookReader({ ebook }: { ebook: Ebook }) {
   const { isReady, isSubscribed } = useAuth();
@@ -92,263 +68,38 @@ export function EbookReader({ ebook }: { ebook: Ebook }) {
 
   return (
     <ReaderShell ebook={ebook}>
-      <PdfCanvasReader ebook={ebook} fileUrl={ebook.fileUrl} />
+      <NativePdfReader ebook={ebook} fileUrl={ebook.fileUrl} />
     </ReaderShell>
   );
 }
 
-function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) {
+function NativePdfReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) {
   const { isSubscribed } = useAuth();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const renderTaskRef = useRef<RenderTask | null>(null);
-  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageInput, setPageInput] = useState("1");
-  const [scale, setScale] = useState(1);
-  const [status, setStatus] = useState("Loading PDF...");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let isCancelled = false;
-    let loadingTask: PdfLoadingTask | null = null;
-
-    setStatus("Loading PDF...");
-    setError("");
-    setPdf(null);
-    setPageNumber(1);
-    setPageInput("1");
-
-    async function loadPdf() {
-      const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
-
-      if (isCancelled) {
-        return;
-      }
-
-      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
-
-      function createLoadingTask(useRangeLoading: boolean) {
-        const task = pdfjs.getDocument({
-          url: fileUrl,
-          disableAutoFetch: useRangeLoading,
-          disableStream: useRangeLoading,
-          rangeChunkSize: PDF_RANGE_CHUNK_SIZE
-        }) as PdfLoadingTask;
-
-        task.onProgress = (progress: PdfProgress) => {
-          if (!isCancelled) {
-            setStatus(getPdfLoadingStatus(progress));
-          }
-        };
-
-        loadingTask = task;
-        return task;
-      }
-
-      try {
-        setStatus("Loading first page...");
-
-        let loadedPdf: PDFDocumentProxy;
-
-        try {
-          loadedPdf = await createLoadingTask(true).promise;
-        } catch {
-          if (isCancelled) {
-            return;
-          }
-
-          void loadingTask?.destroy().catch(() => undefined);
-          setStatus("Loading PDF...");
-          loadedPdf = await createLoadingTask(false).promise;
-        }
-
-        if (isCancelled) {
-          void loadedPdf.destroy();
-          return;
-        }
-
-        setPdf(loadedPdf);
-        setStatus("");
-      } catch {
-        if (!isCancelled) {
-          setError("The PDF could not be loaded in the reader.");
-          setStatus("");
-        }
-      }
-    }
-
-    void loadPdf();
-
-    return () => {
-      isCancelled = true;
-      renderTaskRef.current?.cancel();
-      void loadingTask?.destroy();
-    };
-  }, [fileUrl]);
-
-  useEffect(() => {
-    if (!pdf || !canvasRef.current) {
-      return;
-    }
-
-    let isCancelled = false;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-
-    if (!context) {
-      setError("The reader canvas is not available.");
-      return;
-    }
-
-    setStatus(`Rendering page ${pageNumber}...`);
-    setError("");
-    renderTaskRef.current?.cancel();
-
-    pdf
-      .getPage(pageNumber)
-      .then((page) => {
-        if (isCancelled) {
-          return;
-        }
-
-        const baseViewport = page.getViewport({ scale: 1 });
-        const containerWidth = Math.min(window.innerWidth - 48, 980);
-        const fitScale = Math.max(0.5, containerWidth / baseViewport.width);
-        const viewport = page.getViewport({ scale: fitScale * scale });
-        const outputScale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_PIXEL_RATIO);
-
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
-        context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
-        context.clearRect(0, 0, viewport.width, viewport.height);
-
-        const renderTask = page.render({
-          canvasContext: context,
-          viewport
-        });
-        renderTaskRef.current = renderTask;
-
-        return renderTask.promise;
-      })
-      .then(() => {
-        if (!isCancelled) {
-          setStatus("");
-        }
-      })
-      .catch((renderError) => {
-        if (!isCancelled && renderError instanceof Error && renderError.name !== "RenderingCancelledException") {
-          setError("This page could not be rendered.");
-          setStatus("");
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-      renderTaskRef.current?.cancel();
-    };
-  }, [pageNumber, pdf, scale]);
-
-  function goToPage(nextPage: number) {
-    if (!pdf) {
-      return;
-    }
-
-    const clampedPage = Math.min(Math.max(nextPage, 1), pdf.numPages);
-    setPageNumber(clampedPage);
-    setPageInput(clampedPage.toString());
-  }
-
-  function submitPageInput() {
-    const nextPage = Number.parseInt(pageInput, 10);
-
-    if (Number.isFinite(nextPage)) {
-      goToPage(nextPage);
-      return;
-    }
-
-    setPageInput(pageNumber.toString());
-  }
-
-  function changeScale(nextScale: number) {
-    setScale(Math.min(Math.max(nextScale, MIN_SCALE), MAX_SCALE));
-  }
-
-  const previousDisabled = !pdf || pageNumber <= 1;
-  const nextDisabled = !pdf || pageNumber >= pdf.numPages;
+  const [isLoaded, setIsLoaded] = useState(false);
   const downloadHref = `/api/ebooks/${ebook.slug}/download`;
 
   return (
-    <section
-      className="flex flex-1 flex-col bg-muted/60"
-      onContextMenu={(event) => event.preventDefault()}
-      onCopy={(event) => event.preventDefault()}
-      onCut={(event) => event.preventDefault()}
-      onPaste={(event) => event.preventDefault()}
-      onDragStart={(event) => event.preventDefault()}
-    >
+    <section className="flex flex-1 flex-col bg-muted/60">
       <div className="border-b bg-background">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <ReaderIconButton
-              label="Previous page"
-              className="hidden sm:inline-flex"
-              disabled={previousDisabled}
-              onClick={() => goToPage(pageNumber - 1)}
-            >
-              <ChevronLeft size={18} aria-hidden="true" />
-            </ReaderIconButton>
-
-            <form
-              className="flex items-center gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitPageInput();
-              }}
-            >
-              <Input
-                aria-label="Page number"
-                className="h-9 w-20 text-center"
-                inputMode="numeric"
-                value={pageInput}
-                disabled={!pdf}
-                onChange={(event) => setPageInput(event.target.value)}
-                onBlur={submitPageInput}
-              />
-              <span className="whitespace-nowrap text-sm font-medium text-muted-foreground">
-                / {pdf?.numPages ?? "..."}
-              </span>
-            </form>
-
-            <ReaderIconButton
-              label="Next page"
-              className="hidden sm:inline-flex"
-              disabled={nextDisabled}
-              onClick={() => goToPage(pageNumber + 1)}
-            >
-              <ChevronRight size={18} aria-hidden="true" />
-            </ReaderIconButton>
+          <div className="flex min-w-0 items-center gap-2">
+            <Badge variant="secondary" className="gap-2">
+              <FileText size={13} aria-hidden="true" />
+              PDF
+            </Badge>
+            <span className="truncate text-sm font-medium text-muted-foreground">{ebook.title}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <ReaderIconButton
-              label="Zoom out"
-              disabled={scale <= MIN_SCALE}
-              onClick={() => changeScale(scale - SCALE_STEP)}
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
             >
-              <Minus size={18} aria-hidden="true" />
-            </ReaderIconButton>
-            <span className="min-w-16 text-center text-sm font-semibold text-foreground">
-              {Math.round(scale * 100)}%
-            </span>
-            <ReaderIconButton
-              label="Zoom in"
-              disabled={scale >= MAX_SCALE}
-              onClick={() => changeScale(scale + SCALE_STEP)}
-            >
-              <Plus size={18} aria-hidden="true" />
-            </ReaderIconButton>
+              <ExternalLink size={18} aria-hidden="true" />
+              Open in tab
+            </a>
             {isSubscribed ? (
               <a
                 href={downloadHref}
@@ -378,50 +129,19 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
           </dl>
         </aside>
 
-        <div className="min-w-0 rounded-lg border bg-background p-3 shadow-sm md:p-5">
-          <div className="relative min-h-[70vh] overflow-auto rounded-md bg-muted p-3 md:p-6">
-            {status ? (
-              <p className="mb-3 rounded-md bg-background px-3 py-2 text-sm font-medium text-muted-foreground shadow-sm">
-                {status}
-              </p>
+        <div className="min-w-0 rounded-lg border bg-background p-3 shadow-sm md:p-4">
+          <div className="relative h-[calc(100svh-220px)] min-h-[72vh] overflow-hidden rounded-md bg-muted">
+            {!isLoaded ? (
+              <div className="absolute inset-x-3 top-3 z-10 rounded-md bg-background px-3 py-2 text-sm font-medium text-muted-foreground shadow-sm">
+                Loading PDF...
+              </div>
             ) : null}
-            {error ? (
-              <p className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-                {error}
-              </p>
-            ) : null}
-            <div className="flex min-w-max justify-center">
-              <canvas
-                ref={canvasRef}
-                aria-label={`${ebook.title} page ${pageNumber}`}
-                className={cn(
-                  "select-none rounded-sm bg-white shadow-xl",
-                  !pdf || error ? "hidden" : "block"
-                )}
-              />
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11"
-              disabled={previousDisabled}
-              onClick={() => goToPage(pageNumber - 1)}
-            >
-              <ChevronLeft size={18} aria-hidden="true" />
-              Previous
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11"
-              disabled={nextDisabled}
-              onClick={() => goToPage(pageNumber + 1)}
-            >
-              Next
-              <ChevronRight size={18} aria-hidden="true" />
-            </Button>
+            <iframe
+              src={getNativePdfSrc(fileUrl)}
+              title={`${ebook.title} PDF`}
+              className="h-full w-full border-0 bg-background"
+              onLoad={() => setIsLoaded(true)}
+            />
           </div>
         </div>
       </div>
@@ -429,22 +149,9 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
   );
 }
 
-function getPdfLoadingStatus(progress: PdfProgress) {
-  if (progress.total && progress.total > 0) {
-    const percent = Math.min(99, Math.max(1, Math.round((progress.loaded / progress.total) * 100)));
-    return `Loading PDF ${percent}%...`;
-  }
-
-  return `Loading PDF (${formatFileSize(progress.loaded)} received)...`;
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes >= 1024 * 1024) {
-    const megabytes = bytes / (1024 * 1024);
-    return `${megabytes >= 10 ? megabytes.toFixed(0) : megabytes.toFixed(1)} MB`;
-  }
-
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+function getNativePdfSrc(fileUrl: string) {
+  const separator = fileUrl.includes("#") ? "&" : "#";
+  return `${fileUrl}${separator}toolbar=1&navpanes=0&view=FitH`;
 }
 
 function ReaderShell({ ebook, children }: { ebook: Ebook; children: React.ReactNode }) {
@@ -490,35 +197,6 @@ function ReaderShell({ ebook, children }: { ebook: Ebook; children: React.ReactN
 
       {children}
     </main>
-  );
-}
-
-function ReaderIconButton({
-  label,
-  className,
-  disabled,
-  onClick,
-  children
-}: {
-  label: string;
-  className?: string;
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      title={label}
-      aria-label={label}
-      disabled={disabled}
-      className={className}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
   );
 }
 

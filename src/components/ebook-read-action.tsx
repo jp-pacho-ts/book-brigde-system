@@ -5,14 +5,6 @@ import { ArrowRight, BookOpen, Download, LockKeyhole } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 
-let pdfReaderWarmup: Promise<unknown> | null = null;
-
-function warmPdfReader() {
-  if (!pdfReaderWarmup) {
-    pdfReaderWarmup = import("pdfjs-dist/legacy/build/pdf");
-  }
-}
-
 export function EbookReadAction({
   fileUrl,
   isPremium,
@@ -50,8 +42,6 @@ export function EbookReadAction({
       <Link
         href={`/ebooks/${slug}/read`}
         className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-        onFocus={warmPdfReader}
-        onMouseEnter={warmPdfReader}
       >
         <BookOpen size={16} aria-hidden="true" />
         Open reader
