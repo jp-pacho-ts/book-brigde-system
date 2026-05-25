@@ -28,9 +28,18 @@ const pdfWorkerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.js", import
 const MIN_SCALE = 0.7;
 const MAX_SCALE = 1.8;
 const SCALE_STEP = 0.15;
+const PDF_RANGE_CHUNK_SIZE = 256 * 1024;
+const MAX_RENDER_PIXEL_RATIO = 2;
+
+type PdfProgress = {
+  loaded: number;
+  total?: number;
+};
+
 type PdfLoadingTask = {
   promise: Promise<PDFDocumentProxy>;
   destroy: () => Promise<void>;
+  onProgress?: Function;
 };
 
 export function EbookReader({ ebook }: { ebook: Ebook }) {
@@ -111,15 +120,47 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
 
     async function loadPdf() {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
+
+      if (isCancelled) {
+        return;
+      }
+
       pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
-      loadingTask = pdfjs.getDocument({
-        url: fileUrl,
-        disableAutoFetch: false,
-        disableStream: false
-      }) as PdfLoadingTask;
+
+      function createLoadingTask(useRangeLoading: boolean) {
+        const task = pdfjs.getDocument({
+          url: fileUrl,
+          disableAutoFetch: useRangeLoading,
+          disableStream: useRangeLoading,
+          rangeChunkSize: PDF_RANGE_CHUNK_SIZE
+        }) as PdfLoadingTask;
+
+        task.onProgress = (progress: PdfProgress) => {
+          if (!isCancelled) {
+            setStatus(getPdfLoadingStatus(progress));
+          }
+        };
+
+        loadingTask = task;
+        return task;
+      }
 
       try {
-        const loadedPdf = await loadingTask.promise;
+        setStatus("Loading first page...");
+
+        let loadedPdf: PDFDocumentProxy;
+
+        try {
+          loadedPdf = await createLoadingTask(true).promise;
+        } catch {
+          if (isCancelled) {
+            return;
+          }
+
+          void loadingTask?.destroy().catch(() => undefined);
+          setStatus("Loading PDF...");
+          loadedPdf = await createLoadingTask(false).promise;
+        }
 
         if (isCancelled) {
           void loadedPdf.destroy();
@@ -174,7 +215,7 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
         const containerWidth = Math.min(window.innerWidth - 48, 980);
         const fitScale = Math.max(0.5, containerWidth / baseViewport.width);
         const viewport = page.getViewport({ scale: fitScale * scale });
-        const outputScale = window.devicePixelRatio || 1;
+        const outputScale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_PIXEL_RATIO);
 
         canvas.width = Math.floor(viewport.width * outputScale);
         canvas.height = Math.floor(viewport.height * outputScale);
@@ -386,6 +427,24 @@ function PdfCanvasReader({ ebook, fileUrl }: { ebook: Ebook; fileUrl: string }) 
       </div>
     </section>
   );
+}
+
+function getPdfLoadingStatus(progress: PdfProgress) {
+  if (progress.total && progress.total > 0) {
+    const percent = Math.min(99, Math.max(1, Math.round((progress.loaded / progress.total) * 100)));
+    return `Loading PDF ${percent}%...`;
+  }
+
+  return `Loading PDF (${formatFileSize(progress.loaded)} received)...`;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    const megabytes = bytes / (1024 * 1024);
+    return `${megabytes >= 10 ? megabytes.toFixed(0) : megabytes.toFixed(1)} MB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function ReaderShell({ ebook, children }: { ebook: Ebook; children: React.ReactNode }) {
